@@ -1,0 +1,4 @@
+{
+  "description": "Files core export/serve must copy or mount from skills/visual-acceptance/review/ (flat, same directory as index.html). Tests, fixtures and README are not part of the UI bundle.",
+  "files": ["index.html", "review.css", "review-model.js", "review-storage.js", "review-app.js"]
+}
