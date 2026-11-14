@@ -1,0 +1,306 @@
+{
+  "delivery": "Actual functions.read image attachments in visual-device session; post-capture inspection, not real-time frame assertions",
+  "captures": [
+    {
+      "captureId": "after-v2-phone-empty",
+      "cellId": "cell-6f12c2c91244d003ae3a0185",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "f2477a75cea4dd3a7b7c00ed4d93ad5adcec43b2097bf4c81547377d1b81edd3",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "empty",
+          "visibleText": [
+            "No itinerary yet",
+            "Load itinerary",
+            "Test connection failure"
+          ],
+          "comment": "The actual image shows No itinerary yet, the download explanation and both actions clearly separated. The empty state is visible without clipping."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-recovered-phone-ready",
+      "cellId": "cell-932b82de79b13077f775b564",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "33844bb893b4a7e2a1b2e740d06e8b7dc29a3f84516f9ad5cf14b8a045e66199",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "12.8 km",
+            "6 hours",
+            "Offline maps include the full trail and emergency exit routes",
+            "Start at North Trailhead \u00b7 07:30"
+          ],
+          "comment": "Full coverage text wraps into two readable phone lines. Ready heading, distance, duration and departure details are visible with no outgoing loading text or progress track remaining."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-recovered-phone-error",
+      "cellId": "cell-3e0f89fd96b5530136054501",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "5552f5f077c45b19aa50be6d54288921314f1f649a7de2ecc4abf65eaafabe0a",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "error",
+          "visibleText": [
+            "Connection unavailable",
+            "Your itinerary is safe. Reconnect and try the download again.",
+            "Try again"
+          ],
+          "comment": "The failure title, recovery explanation and Try again are visible. No clipping or overlap is visible."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-recovered-phone-download",
+      "cellId": "cell-24b31db9e802d2655a7411ab",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "frame-start",
+          "sha256": "6fe006b3a7beb63b9b916c1bb84cbe0f2885843744c14dc78987a55d2ee990f2",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "empty",
+          "visibleText": [
+            "No itinerary yet",
+            "Load itinerary",
+            "Test connection failure"
+          ],
+          "comment": "The actual image shows No itinerary yet, the download explanation and both actions clearly separated. The empty state is visible without clipping."
+        },
+        {
+          "assetId": "frame-1",
+          "sha256": "fff063b00f6205acd09c7811b0db8729eb74adacfa66d143fd7cf6ceec788313",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "empty",
+          "visibleText": [
+            "No itinerary yet",
+            "Load itinerary",
+            "Test connection failure"
+          ],
+          "comment": "The actual image shows No itinerary yet, the download explanation and both actions clearly separated. This first post-dispatch phone sample still shows empty, so action dispatch must not be confused with instant UI execution."
+        },
+        {
+          "assetId": "frame-2",
+          "sha256": "2246ddc3fe863b6d43903f53510a115746c3d8babcae700ee6f7369c03d57a4f",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "visibleText": [
+            "Preparing your route",
+            "Downloading trail details and offline maps\u2026",
+            "Keep this screen open."
+          ],
+          "comment": "The loading text is visible and the teal progress fill is around one-third of the track."
+        },
+        {
+          "assetId": "frame-3",
+          "sha256": "1766b96df074ecb08356950908a03182b588c033befe33dc6830f8b7d3ffc928",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "12.8 km",
+            "6 hours",
+            "Offline maps include the full trail and emergency exit routes",
+            "Start at North Trailhead \u00b7 07:30"
+          ],
+          "comment": "Full coverage text wraps into two readable phone lines. Ready heading, distance, duration and departure details are visible with no outgoing loading text or progress track remaining."
+        },
+        {
+          "assetId": "frame-end",
+          "sha256": "33844bb893b4a7e2a1b2e740d06e8b7dc29a3f84516f9ad5cf14b8a045e66199",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "12.8 km",
+            "6 hours",
+            "Offline maps include the full trail and emergency exit routes",
+            "Start at North Trailhead \u00b7 07:30"
+          ],
+          "comment": "Full coverage text wraps into two readable phone lines. Ready heading, distance, duration and departure details are visible with no outgoing loading text or progress track remaining."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-final-tablet-empty",
+      "cellId": "cell-bd49dc6e7cdb49a48c349ec6",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "60709c664d6826e5d3ba3782f66f1e56de86a4b42261932d8496bc90150ea767",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "empty",
+          "visibleText": [
+            "No itinerary yet",
+            "Load itinerary",
+            "Test connection failure"
+          ],
+          "comment": "The actual image shows No itinerary yet, the download explanation and both actions clearly separated. The empty state is visible without clipping."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-retry-tablet-ready",
+      "cellId": "cell-7f2c8ba24a33d61baade8b8d",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "4735c0a4821f9fd21e8f27d1575881956a53f3638eae2b95059971455532844d",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "12.8 km",
+            "6 hours",
+            "Offline maps include the full trail and emergency exit routes",
+            "Start at North Trailhead \u00b7 07:30"
+          ],
+          "comment": "Full coverage text is readable on one iPad line. Ready heading, distance, duration and departure details are visible with no outgoing loading text or progress track remaining."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-settled-tablet-error",
+      "cellId": "cell-8968de44c1268ec114254cc2",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "0f157d55a613f47ed6f0421b636dff89f3b72ba040bc3a1f52f5c5ca0bd95141",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "error",
+          "visibleText": [
+            "Connection unavailable",
+            "Your itinerary is safe. Reconnect and try the download again.",
+            "Try again"
+          ],
+          "comment": "The failure title, recovery explanation and Try again are visible. The settled iPad capture has no residual teal track beside the card; it resolves the earlier transient question."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-settled-tablet-download",
+      "cellId": "cell-d62a00ee18a37f7201e8410d",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "frame-start",
+          "sha256": "0ba4b0e8dd0d5f6954ccc734ba766e9269c93e6e94e6d36c15cd19a4dc54395a",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "empty",
+          "visibleText": [
+            "No itinerary yet",
+            "Load itinerary",
+            "Test connection failure"
+          ],
+          "comment": "The actual image shows No itinerary yet, the download explanation and both actions clearly separated. The empty state is visible without clipping."
+        },
+        {
+          "assetId": "frame-1",
+          "sha256": "bf636e76005a492d217d708fb7ea2dae0d01e203397f93409dd0a4870db6ae32",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "visibleText": [
+            "Preparing your route",
+            "Downloading trail details and offline maps\u2026",
+            "Keep this screen open."
+          ],
+          "comment": "The route preparation text is visible and the progress fill is near zero."
+        },
+        {
+          "assetId": "frame-2",
+          "sha256": "435b00ec50be4c82d9073504f5c126d1692855b29c408a603bdb662105da879f",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "visibleText": [
+            "Preparing your route",
+            "Downloading trail details and offline maps\u2026",
+            "Keep this screen open."
+          ],
+          "comment": "The route preparation text remains visible while the teal progress fill has advanced across most of the track."
+        },
+        {
+          "assetId": "frame-3",
+          "sha256": "b273f7b641c27095e47b5973fb10db87af696f3d373fcb72dc05b8426828775a",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "12.8 km",
+            "6 hours",
+            "Offline maps include the full trail and emergency exit routes",
+            "Start at North Trailhead \u00b7 07:30"
+          ],
+          "comment": "Full coverage text is readable on one iPad line. Ready heading, distance, duration and departure details are visible with no outgoing loading text or progress track remaining."
+        },
+        {
+          "assetId": "frame-end",
+          "sha256": "766dcc2e4ba10a6e930f1891ad7059f5fd96568fa32cbed400d44b82c936b4e0",
+          "inspectedAt": "2026-11-14T16:45:17.406230+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "12.8 km",
+            "6 hours",
+            "Offline maps include the full trail and emergency exit routes",
+            "Start at North Trailhead \u00b7 07:30"
+          ],
+          "comment": "Full coverage text is readable on one iPad line. Ready heading, distance, duration and departure details are visible with no outgoing loading text or progress track remaining."
+        }
+      ]
+    }
+  ]
+}

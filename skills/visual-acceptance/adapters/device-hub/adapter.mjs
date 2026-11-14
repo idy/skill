@@ -8,7 +8,7 @@ import { StdioMCP } from './mcp.mjs';
 
 const exec = promisify(execFile);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-export const VERSION = '1.0';
+export const VERSION = '1.1';
 export const APPLE_TOOLS = Object.freeze({ start: 'DeviceInteractionStartSession', observe: 'DeviceInteractionSynthesize', end: 'DeviceInteractionEndSession' });
 
 export function pngDimensions(bytes) {
@@ -26,9 +26,22 @@ export function validatePlan(plan) {
   for (const key of ['id', 'cellId', 'sourceSnapshotId', 'buildId', 'runtimeId', 'specRev']) if (typeof plan[key] !== 'string' || !plan[key]) throw new Error(`Missing ${key}`);
   if (!plan.device?.id || !plan.device?.os || !plan.app?.id) throw new Error('Explicit device ID, OS, and app ID are required');
   if (!['portrait', 'landscape'].includes(plan.device.orientation)) throw new Error('Explicit orientation is required');
+  if (plan.device.kind !== undefined && !['simulator', 'device'].includes(plan.device.kind)) throw new Error('device.kind must be simulator or device when supplied');
   if (!Array.isArray(plan.expectedTexts) || !plan.expectedTexts.length) throw new Error('expectedTexts must establish the requested state');
   if (plan.transition && (!plan.transition.fromStateId || !plan.transition.toStateId || !plan.transition.trigger?.tap || !plan.transition.fromExpectedTexts?.length)) throw new Error('Transition requires from/to state, starting assertions, and trigger tap');
 }
+export function transitionForFrames(spec, frames, actions, triggerActionIndex) {
+  if (frames.length < 3) throw new Error('Transition needs start, intermediate and end frames');
+  const first = frames[0], last = frames.at(-1);
+  const start = Date.parse(first.capturedAt), end = Date.parse(last.capturedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) throw new Error('Transition endpoint observation timestamps must increase');
+  if (frames.some((frame, index) => frame.offsetMs !== Date.parse(frame.capturedAt) - start || (index && frame.offsetMs <= frames[index - 1].offsetMs))) throw new Error('Transition offsets must exactly match recorded observation timestamps');
+  const action = actions[triggerActionIndex], triggeredAt = Date.parse(action?.at);
+  if (!Number.isSafeInteger(triggerActionIndex) || !Number.isFinite(triggeredAt) || triggeredAt < start || triggeredAt >= end) throw new Error('Transition trigger must reference the actual in-interval action');
+  if (!frames.some(frame => Date.parse(frame.capturedAt) > triggeredAt && Date.parse(frame.capturedAt) < end)) throw new Error('Transition needs an intermediate observation after the trigger');
+  return { fromStateId: spec.fromStateId, toStateId: spec.toStateId, startedAt: first.capturedAt, endedAt: last.capturedAt, triggerActionIndex, startEvidenceAssetId: first.id, endEvidenceAssetId: last.id };
+}
+
 async function runArgv(argv) {
   if (!Array.isArray(argv) || !argv.length || argv.some(s => typeof s !== 'string')) throw new Error('Preparation command must be argv, never shell text');
   await exec(argv[0], argv.slice(1), { timeout: 60000, maxBuffer: 1024 * 1024 });
@@ -41,10 +54,15 @@ export async function capture(plan, { outputDir, bridgeCommand, tools = APPLE_TO
   const directory = resolve(outputDir);
   await mkdir(directory, { recursive: false }); // unique evidence directory; never overwrite
   const result = Object.fromEntries(['id','cellId','sourceSnapshotId','buildId','runtimeId','specRev'].map(k => [k, plan[k]]));
-  Object.assign(result, { createdAt: clock(), status: 'blocked', assets: [], actions: [], assertions: [], provenance: { adapter: 'device-hub', adapterVersion: VERSION, deviceId: plan.device.id, deviceKind: plan.device.kind || 'simulator', source: 'real-app', device: plan.device, app: plan.app, fixtureDescription: plan.fixtureDescription || 'No fixture declared', captureMethod: 'Apple Device Hub MCP DeviceInteractionSynthesize (original returned PNG bytes)' }, limitations: ['Accessibility assertions establish state reachability only. Visual review of every new image is required.', 'Device Hub may return screenshots at a different scale from the simulator framebuffer; original dimensions are recorded separately.'], blockers: [] });
+  Object.assign(result, { createdAt: clock(), status: 'blocked', assets: [], actions: [], assertions: [], provenance: { adapter: 'device-hub', adapterVersion: VERSION, deviceId: plan.device.id, deviceKind: 'unknown', requestedDeviceKind: plan.device.kind ?? 'unspecified', source: 'real-app', device: { ...plan.device, kind: 'unknown' }, app: plan.app, fixtureDescription: plan.fixtureDescription || 'No fixture declared', captureMethod: 'Apple Device Hub MCP DeviceInteractionSynthesize (original returned PNG bytes)' }, limitations: ['Accessibility assertions establish state reachability only. Visual review of every new image is required.', 'Device Hub may return screenshots at a different scale from the simulator framebuffer; original dimensions are recorded separately.'], blockers: [] });
+  if (plan.captureAttemptEventId) result.provenance.captureAttemptEventId = plan.captureAttemptEventId;
   const client = injected || new StdioMCP(bridgeCommand);
   let session, state, hierarchy = '', recording;
-  const recordAction = (type, description, extras = {}) => result.actions.push({ at: clock(), type, description, source: 'device-hub', ...extras });
+  const recordAction = (type, description, extras = {}) => {
+    const index = result.actions.length;
+    result.actions.push({ at: clock(), type, description, source: 'device-hub', ...extras });
+    return index;
+  };
   const observe = async command => {
     const before = clock();
     state = await client.call(tools.observe, { interactSessionKey: session.interactionSessionKey, ...(plan.activateApp === false ? {} : { activationBundleId: plan.app.id }), interactionCommand: command });
@@ -95,8 +113,12 @@ export async function capture(plan, { outputDir, bridgeCommand, tools = APPLE_TO
     for (const item of plan.prepare || []) { await runArgv(item.argv); recordAction(item.type || 'prepare', item.description); }
     session = await client.call(tools.start, { deviceIdentifier: plan.device.id, sessionIdentifier: `Visual Acceptance ${plan.id} ${Date.now()}` });
     if (session.deviceUUID !== plan.device.id) throw new Error('Device Hub selected a different device; no capture accepted');
-    if (plan.device.kind && (session.deviceIsSimulator ? 'simulator' : 'device') !== plan.device.kind) throw new Error('Device Hub kind differs from the requested simulator/device');
-    recordAction('session', `Open ${session.deviceIsSimulator ? 'simulator' : 'device'} session`, { deviceId: session.deviceUUID });
+    if (typeof session.deviceIsSimulator !== 'boolean') throw new Error('Device Hub did not report its actual device kind; provenance remains unknown');
+    const actualKind = session.deviceIsSimulator ? 'simulator' : 'device';
+    result.provenance.deviceKind = actualKind;
+    result.provenance.device.kind = actualKind;
+    if (plan.device.kind && actualKind !== plan.device.kind) throw new Error('Device Hub kind differs from the requested simulator/device');
+    recordAction('session', `Open ${actualKind} session`, { deviceId: session.deviceUUID });
     // First orientation command acts on the explicitly named owned test device.
     await observe(`orientation ${plan.device.orientation === 'portrait' ? 'portrait' : 'landscapeLeft'}`);
     recordAction('orientation', `Set real device orientation ${plan.device.orientation}`);
@@ -106,15 +128,15 @@ export async function capture(plan, { outputDir, bridgeCommand, tools = APPLE_TO
     }
     if (plan.transition) {
       assertTexts(plan.transition.fromExpectedTexts);
-      if (plan.device.kind !== 'simulator' || !plan.transition.simctlVideo) throw new Error('Transition recording needs configured simulator video capability; no current-screen substitute');
+      if (result.provenance.deviceKind !== 'simulator' || !plan.transition.simctlVideo) throw new Error('Transition recording needs configured simulator video capability; no current-screen substitute');
       const videoPath = join(directory, 'transition.mp4');
-      const initial = await save(state.screenshotPath, 'frame-start', 'frame', { offsetMs: 0, observedBetween: state.observedBetween, captureMethod: 'Device Hub original screenshot before trigger' });
+      const initial = await save(state.screenshotPath, 'frame-start', 'frame', { offsetMs: 0, capturedAt: state.observedBetween.endedAt, observedBetween: state.observedBetween, captureMethod: 'Device Hub original screenshot before trigger; capturedAt is host observation completion' });
       const t0 = performance.now();
       const startedAt = initial.capturedAt;
       recording = startVideo(plan.device.id, videoPath);
       await recording.ready;
       const { x, y } = hitPoint(hierarchy, plan.transition.trigger.tap);
-      recordAction('tap', `Trigger ${plan.transition.trigger.tap} at latest hierarchy hitPoint`, { x, y });
+      const triggerActionIndex = recordAction('tap', `Trigger ${plan.transition.trigger.tap} at latest hierarchy hitPoint`, { x, y });
       // Video and framebuffer samples run while the real MCP tap is in flight.
       const trigger = observe(`t ${x} ${y}`);
       trigger.catch(() => {});
@@ -128,21 +150,24 @@ export async function capture(plan, { outputDir, bridgeCommand, tools = APPLE_TO
         const framePath = join(directory, `frame-${index + 1}.png`);
         await runArgv(['xcrun', 'simctl', 'io', plan.device.id, 'screenshot', framePath]);
         const after = clock();
-        const offsetMs = Math.round(performance.now() - t0);
-        result.assets.push({ id: `frame-${index + 1}`, kind: 'frame', path: framePath, capturedAt: after, ...pngDimensions(await readFile(framePath)), offsetMs, observedBetween: { startedAt: before, endedAt: after }, captureMethod: 'Live simctl framebuffer sample during Device Hub action; unmodified PNG' });
+        const offsetMs = Date.parse(after) - Date.parse(startedAt);
+        result.assets.push({ id: `frame-${index + 1}`, kind: 'frame', path: framePath, capturedAt: after, ...pngDimensions(await readFile(framePath)), offsetMs, elapsedMonotonicMs: Math.round(performance.now() - t0), observedBetween: { startedAt: before, endedAt: after }, captureMethod: 'Live simctl framebuffer sample during Device Hub action; capturedAt is host observation completion; unmodified PNG' });
         previous = target;
       }
       await trigger;
+      const endSettleMs = plan.transition.endSettleMs ?? 0;
+      if (!Number.isFinite(endSettleMs) || endSettleMs < 0 || endSettleMs > 15000) throw new Error('transition.endSettleMs outside 0..15000');
+      if (endSettleMs) await pause(endSettleMs);
       await observe('');
       assertTexts(plan.expectedTexts);
-      await save(state.screenshotPath, 'frame-end', 'frame', { offsetMs: Math.round(performance.now() - t0), observedBetween: state.observedBetween, captureMethod: 'Device Hub original screenshot after ending-state assertions' });
+      const final = await save(state.screenshotPath, 'frame-end', 'frame', { offsetMs: Date.parse(state.observedBetween.endedAt) - Date.parse(startedAt), capturedAt: state.observedBetween.endedAt, observedBetween: state.observedBetween, captureMethod: 'Device Hub original screenshot after ending-state accessibility assertions; capturedAt is host observation completion' });
       await recording.stop(); recording = undefined;
-      const endedAt = clock();
+      const recordingStoppedAt = clock();
       const { stdout: movieJSON } = await exec('xcrun', ['swift', join(dirname(fileURLToPath(import.meta.url)), 'video-info.swift'), videoPath], { timeout: 30000, maxBuffer: 1024 * 1024 });
       const movie = JSON.parse(movieJSON);
       if (!Number.isFinite(movie.durationMs) || movie.durationMs <= 0) throw new Error('Cannot read actual movie duration');
-      result.assets.push({ id: 'transition-video', kind: 'video', path: videoPath, capturedAt: endedAt, mimeType: 'video/mp4', ...movie });
-      result.transition = { fromStateId: plan.transition.fromStateId, toStateId: plan.transition.toStateId, startedAt, endedAt, captureMethod: 'simctl recordVideo h264 concurrent with real Device Hub tap', timing: 'host monotonic sample offsets; screenshot observedBetween brackets capture latency', frameRate: 'Recorder-controlled variable rate; nominal movie FPS recorded per asset, no measured animation smoothness verdict' };
+      result.assets.push({ id: 'transition-video', kind: 'video', path: videoPath, capturedAt: recordingStoppedAt, mimeType: 'video/mp4', ...movie });
+      result.transition = { ...transitionForFrames(plan.transition, result.assets.filter(a => a.kind === 'frame'), result.actions, triggerActionIndex), recordingStoppedAt, captureMethod: 'simctl recordVideo h264 concurrent with real Device Hub tap', timing: 'offsetMs is elapsed host UTC from recorded observation-completion timestamps; monotonic scheduling and observedBetween capture-latency brackets are retained separately; no simulator presentation-time claim', frameRate: 'Recorder-controlled variable rate; nominal movie FPS recorded per asset, no measured animation smoothness verdict' };
       result.limitations.push('Sparse representative frames cannot establish animation smoothness. Video is retained; no frame pacing/runtime metrics were measured.');
     } else {
       // Bounded wait for controlled IO, always followed by a fresh observation.

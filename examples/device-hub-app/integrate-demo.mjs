@@ -5,6 +5,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { attachInspection } from './inspection.mjs';
 const argv=process.argv.slice(2), step=argv[0];
 const opt=name=>argv[argv.indexOf(name)+1];
 for(const name of ['--core','--store'])if(!argv.includes(name))throw new Error(`Missing ${name}`);
@@ -18,11 +19,12 @@ const reviewer={provider:'magpie',model:'codex/gpt-6.1-sol'};
 const context={sessionId,reviewer,imageCapable:true,imagesBlocked:false};
 const json=async p=>JSON.parse(await readFile(p,'utf8'));
 const phase=opt('--phase');
+const specRevision=argv.includes('--spec-revision')?opt('--spec-revision'):'demo-spec-2';
 const tuple=(device,state)=>({scenarioId:'itinerary',stateId:state,deviceId:device,orientation:'portrait',variantId:'default'});
 const cell=(device,state)=>cellIdFor(tuple(device,state));
 const states=['empty','ready','error','download'];
 const checkpoints={empty:['Empty message and load/recovery entry actions are visible.'],ready:['Full offline map coverage including emergency exit routes is readable without truncation.','Trail distance, duration and departure details remain visible.'],error:['Connection failure explanation and Try again action are readable.'],download:['Real Load itinerary tap moves empty → loading progress → ready, with ordered raw frames and a retained recording.','No animation smoothness claim is made from the representative frames.']};
-const project={schemaVersion:1,project:{id:'trail-notes-native-demo',name:'Trail Notes · seeded native demonstration'},spec:{revision:'demo-spec-1',scenarios:[{id:'itinerary',label:'Download an itinerary'}],states:[...states.filter(s=>s!=='download').map(id=>({id,label:{empty:'No itinerary',ready:'Ready offline',error:'Connection unavailable'}[id],kind:'state'})),{id:'download',label:'Download transition',kind:'transition',fromStateId:'empty',toStateId:'ready'}],devices:[{id:'phone',label:'iPhone 17 · 402 × 874 pt',platform:'ios'},{id:'tablet',label:'iPad mini · 744 × 1133 pt',platform:'ios'}],variants:[{id:'default',label:'English · light · default text',language:'en',theme:'light',fontScale:1}],cells:['phone','tablet'].flatMap(d=>states.map(s=>({...tuple(d,s),entry:'App launch → Reset → real UI tap when applicable',checkpoints:checkpoints[s]})))}};
+const project={schemaVersion:1,project:{id:'trail-notes-native-demo',name:'Trail Notes · seeded native demonstration'},spec:{revision:specRevision,scenarios:[{id:'itinerary',label:'Download an itinerary'}],states:[...states.filter(s=>s!=='download').map(id=>({id,label:{empty:'No itinerary',ready:'Ready offline',error:'Connection unavailable'}[id],kind:'state'})),{id:'download',label:'Download transition',kind:'transition',fromStateId:'empty',toStateId:'ready'}],devices:[{id:'phone',label:'iPhone 17 · 402 × 874 pt',platform:'ios'},{id:'tablet',label:'iPad mini · 744 × 1133 pt',platform:'ios'}],variants:[{id:'default',label:'English · light · default text',language:'en',theme:'light',fontScale:1}],cells:['phone','tablet'].flatMap(d=>states.map(s=>({...tuple(d,s),entry:'App launch → Reset → real UI tap when applicable',checkpoints:checkpoints[s]})))}};
 async function addPhase(which,repo){
  const build=await json(join(artifacts,which,'build-manifest.json'));
  const sourcePath=join(repo,'examples/device-hub-app/Sources/TrailNotes.swift');
@@ -31,34 +33,21 @@ async function addPhase(which,repo){
  const source=await store.snapshotSource(repo);
  await store.addBuild({id:`demo-${which}`,sourceSnapshotId:source.id,artifact:{path:join(artifacts,which,'TrailNotes.app')},platform:'ios-simulator-arm64',command:'python3 examples/device-hub-app/build.py --out <new build directory>; xcrun swiftc arm64-apple-ios18.0-simulator; codesign --sign -',createdAt:build.createdAt,immutable:true});
  await store.addRuntime({id:`demo-${which}-runtime`,buildId:`demo-${which}`,adapter:{name:'device-hub',version:'1.0'},app:{id:build.appId,version:'1.0'},fixture:{id:'bundled-travel-repository',version:'1',mode:'controlled-io',description:'Deterministic load ticks and success/failure IO outcome; same SwiftUI views and ItineraryStore state machine.'},environment:{platform:'iOS Simulator',os:'iOS 27.0 (24A434)',devices:(await json(join(artifacts,`bindings-${which}.json`))).devices,executableSha256:build.executableSha256,sourceSha256:sourceSha},immutable:true,driftDetected:false,limitations:['Simulator-only validation; no physical device or Android run.','Installed executable hash is checked by the final capture runner; no HMR.']});
- await store.setTarget({buildId:`demo-${which}`,runtimeId:`demo-${which}-runtime`,specRev:'demo-spec-1'});
+ await store.setTarget({buildId:`demo-${which}`,runtimeId:`demo-${which}-runtime`,specRev:specRevision});
  const selected=which==='before'?['ready']:states;
  for(const d of ['phone','tablet'])for(const s of selected){
-  const directory=join(artifacts,s==='download'?'transitions-with-end':`captures-${which}`,`${d}-${s}`);
+  const directory=argv.includes('--capture-root')?join(resolve(opt('--capture-root')),`${d}-${s}`):join(artifacts,s==='download'?'transitions-with-end':`captures-${which}`,`${d}-${s}`);
   const c=await json(join(directory,'capture.json'));
+  if(c.specRev!==specRevision)throw new Error('Legacy capture/spec mismatch: preserve the old target and explicitly collect for the new spec');
   c.cellId=cell(d,s);c.sourceSnapshotId=source.id;
   // Historical raw inputs used pending-core IDs. Bind the same unchanged assets
   // to the now-created canonical source/build/runtime/spec records.
   c.buildId=`demo-${which}`;c.runtimeId=`demo-${which}-runtime`;
-  if(c.transition){
-   const first=c.assets.find(a=>a.kind==='frame');
-   if(Date.parse(first.capturedAt)<Date.parse(c.transition.startedAt)){
-    c.provenance.metadataCorrection='Transition interval begins at the actual capturedAt of its original starting frame; earlier raw metadata started its clock just after saving this frame.';
-    c.transition.startedAt=first.capturedAt;
-   }
-  }
-  // State reachability is attested only from separately authored inspection
-  // notes tied to these exact bytes. The collector never supplies a verdict.
-  const inspection=await json(join(artifacts,s==='download'?'transitions-with-end':`captures-${which}`,'inspection-notes.json'));
-  const observed=[];
-  for(const asset of c.assets.filter(a=>a.kind!=='video')){
-   const note=inspection.observations.find(n=>n.path===`${d}-${s}/${asset.id}.png`);
-   const digest=createHash('sha256').update(await readFile(asset.path)).digest('hex');
-   if(!note?.comment||!note.visibleText?.length||note.sha256!==digest)throw new Error(`Actual image inspection note missing or stale: ${d}-${s}/${asset.id}`);
-   observed.push(asset.id);
-  }
-  c.assertions.push({description:`State reachability attested by separately authored actual-image inspection notes (${inspection.delivery}); visual checkpoint verdict remains independent.`,result:'pass',basis:'visual',evidenceAssetIds:observed});
-  const saved=await store.addCapture(c);
+  if(c.transition&&(!Number.isSafeInteger(c.transition.triggerActionIndex)||!c.transition.startEvidenceAssetId||!c.transition.endEvidenceAssetId))throw new Error('Legacy transition bindings missing: preserve the original and collect a new transition; do not invent timestamps or endpoint assertions');
+  const inspection=await json(argv.includes('--inspection')?resolve(opt('--inspection')):join(artifacts,s==='download'?'transitions-with-end':`captures-${which}`,'inspection-notes.json'));
+  const notes=inspection.observations.filter(n=>n.path.startsWith(`${d}-${s}/`)).map(n=>({...n,assetId:n.assetId||n.path.split('/').at(-1).replace(/\.png$/,'')}));
+  const inspected=await attachInspection(c,notes);
+  const saved=await store.addCapture(inspected);
   if(saved.status==='blocked')throw new Error(`${c.id}: ${saved.blockers.join('; ')}`);
  }
 }
@@ -100,6 +89,7 @@ if(step==='before'){
    const n=selected.find(n=>n.path.endsWith(`/${a.id}.png`));
    if(!n)throw new Error(`Actual inspection note missing for ${c.capture.id}/${a.id}`);
    if(n.sha256!==a.sha256)throw new Error('Inspection note is missing a hash or is for a different image');
+   if(!['pass','question','fail'].includes(n.verdict))throw new Error('Every inspected image needs an explicit verdict');
    return{assetId:a.id,sha256:a.sha256,detail:n.comment};
   });
   const verdict=selected.some(n=>n.verdict==='fail')?'fail':selected.some(n=>n.verdict==='question')?'question':'pass';
