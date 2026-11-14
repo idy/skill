@@ -1,0 +1,39 @@
+[
+  {
+    "id": "source-0f783d4d85f000ff4ba7713ffe4e4fb4",
+    "head": "100f1b1b4b8376b298dc29780d35a3dd3a928d58",
+    "dirtyDiffSha256": "048f916aec56aaaa56c103cd01a732261a44136a3b287c9e266dc977c05ed83c",
+    "dirty": true,
+    "related": [],
+    "untracked": [
+      "examples/device-hub-app/TrailNotes.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+      "examples/device-hub-app/TrailNotes.xcodeproj/xcuserdata/idy.xcuserdatad/xcschemes/xcschememanagement.plist",
+      "examples/device-hub-app/capture-demo.mjs",
+      "examples/device-hub-app/integrate-demo.mjs",
+      "skills/visual-acceptance/adapters/device-hub/adapter.mjs",
+      "skills/visual-acceptance/adapters/device-hub/adapter.test.mjs",
+      "skills/visual-acceptance/adapters/device-hub/cli.mjs",
+      "skills/visual-acceptance/adapters/device-hub/mcp.mjs"
+    ],
+    "statusSha256": "755ad3019a7184d5e9b0a427f69466321ca6527bd6b1c90b6f5140282ed12d2e",
+    "reconstruction": {
+      "tracked": "Git HEAD plus binary patch in sourceBlobs/<dirtyDiffSha256>",
+      "related": "Related files in sourceBlobs/<sha256>; directory manifest retains relative names",
+      "patchFormat": "git-diff-binary"
+    }
+  },
+  {
+    "id": "source-f1b34412a2d7c871ee16437c1bd8b523",
+    "head": "100f1b1b4b8376b298dc29780d35a3dd3a928d58",
+    "dirtyDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "dirty": false,
+    "related": [],
+    "untracked": [],
+    "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reconstruction": {
+      "tracked": "Git HEAD plus binary patch in sourceBlobs/<dirtyDiffSha256>",
+      "related": "Related files in sourceBlobs/<sha256>; directory manifest retains relative names",
+      "patchFormat": "git-diff-binary"
+    }
+  }
+]
