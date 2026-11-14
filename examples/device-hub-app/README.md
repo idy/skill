@@ -2,7 +2,7 @@
 
 Trail Notes is a small runnable **SwiftUI iOS app**, built for this seeded visual-acceptance demonstration. Its repository fixture controls deterministic IO delays and success/failure only. The same `ItineraryStore` and SwiftUI view handle the actual UI button taps and all states.
 
-The [recorded run](recorded-run/review.json) contains real iPhone and iPad simulator evidence, not screenshots of a review webpage. It has eight final cells: empty, ready, connection failure and download transition on two actual simulator screen configurations. The AI inspection covered all representative images. `humanPass` is **0**; nobody's automated browser interactions are presented as human approval. The recordings have not been watched end-to-end and the AI verdicts do not claim measured animation smoothness.
+The [recorded run](recorded-run/review.json) contains real iPhone and iPad simulator evidence, not screenshots of a review webpage. Its current target is `demo-spec-2` / `demo-after-runtime-v2`, with eight final cells: empty, ready, connection failure and download transition on two actual simulator screen configurations. All current AI reviews use `visual-acceptance-2` and were written after new image receipts and actual image reads. The complete spec-1 bundle and every original media file remain preserved. `humanPass` is **0**; nobody's automated browser interactions are presented as human approval. The recordings have not been watched end-to-end and the AI verdicts do not claim measured animation smoothness.
 
 ## What was found and repaired
 
@@ -15,7 +15,7 @@ The fix changes the production `ItineraryView.ready` text to use its available w
 | iPhone 17, 402 × 874 pt | [Original failed screenshot](recorded-run/evidence/45325879ddcd4db052368828ca6490c2f8421962d25ea6dd295a0ba43d4b3b18.png) | [Original repaired screenshot](recorded-run/evidence/a3854ae9105eac838371ab95bb9b321fc2bc64a946e0c66853f5f728fa6e3cc0.png) |
 | iPad mini, 744 × 1133 pt | [Original failed screenshot](recorded-run/evidence/4a0f4ec98cb34a7db648bdc0da11d56a12200d15b4e5fd3a8a0918624ed47781.png) | [Original repaired screenshot](recorded-run/evidence/c9b850ff2a038812ea53d782abf2b29d1c83551dab7de174633fa402cb96abc5.png) |
 
-[The evidence index](recorded-run/INDEX.md) lists the source/build identities, all states, actual transition timing, image/video hashes and review histories. The earlier two failed reviews remain stale after the new build/captures. Two intermediate transition reviews were also superseded by an explicitly identified movie-metadata correction; their image/video bytes did not change.
+[The evidence index](recorded-run/INDEX.md) lists current screenshots, source/build identities, explicit transition action/endpoint bindings, timing and media hashes. The table above links the retained initial repair run. The current spec-2 cells were genuinely collected again with adapter 1.1; App source/build stayed unchanged. Old failed reviews, earlier transition metadata revisions, four blocked collection attempts and two later transient question reviews remain historical/stale. No old pass was silently inherited after the protocol/spec/runtime change.
 
 ## Build and run a new instance
 
@@ -60,7 +60,10 @@ The bindings file supplies registered core IDs plus your exact newly created dev
   "sourceSnapshotId":"source-from-core",
   "buildId":"build-from-core",
   "runtimeId":"runtime-from-core",
-  "specRev":"demo-spec-1",
+  "specRev":"demo-spec-2",
+  "capturePrefix":"my-new-run-1",
+  "settleMs":5000,
+  "endSettleMs":1000,
   "devices":[
     {"key":"phone","id":"YOUR-PHONE-UUID","model":"iPhone 17","pointWidth":402,"pointHeight":874,"pixelWidth":1206,"pixelHeight":2622,"scale":3},
     {"key":"tablet","id":"YOUR-IPAD-UUID","model":"iPad mini (A17 Pro)","pointWidth":744,"pointHeight":1133,"pixelWidth":1488,"pixelHeight":2266,"scale":2}
@@ -74,22 +77,33 @@ The bindings file supplies registered core IDs plus your exact newly created dev
 }
 ```
 
-Use core `cellIdFor` with the tuples in the recorded run's spec; do not invent different cell IDs. The example runner currently targets the demonstrated iOS 27.0 runtime and portrait configuration; adapt its explicit OS metadata when testing another environment. `--states ready` or `--states download` limits collection. `--before` collects only the ready cells from a separately installed before build. Each run requires a fresh output directory and does not overwrite old images.
+Use core `cellIdFor` with the tuples in the recorded run's spec; do not invent different cell IDs. The example runner currently targets the demonstrated iOS 27.0 runtime and portrait configuration; adapt its explicit OS metadata when testing another environment. `--states ready` or `--states download` limits collection. `--before` collects only the ready cells from a separately installed before build. Each run requires a fresh output directory and does not overwrite old images. Capture IDs use the explicit prefix or a unique timestamp.
+
+When using the core budget, supply both `--core /path/to/immutable-or-integrated-core --store /path/to/initialized-store`, with a registered target and an already active authorized run. Before each native collection, the runner charges `capture_attempt` without supplying a round; core derives it from persisted successful repair events. Exhaustion stops collection. Do not invent repairs/rounds or repeatedly create runs to bypass limits. Keep the collector alive through cleanup; an external process timeout can otherwise orphan its session. The recorded recovery and stopped-run reason are preserved in `recorded-run/run-events.json`.
 
 Every new raw image must be opened and actually inspected. Record its visible text, concrete observations and SHA. A state may be visibly reached while a layout checkpoint fails: the original ready screenshots demonstrate that distinction. Core capture ingestion needs the explicit visual reachability assertion after that inspection. A hierarchy match alone cannot supply it.
 
 ## Core integration and review UI handoff
 
-`integrate-demo.mjs` is the explicit integration harness used for this recorded run. It imports `EvidenceStore` and `cellIdFor` from a selected core checkout, while writing only to the selected local store. It expects the locally retained `artifacts/before`, `artifacts/after`, `artifacts/captures-before`, `artifacts/captures-after`, `artifacts/transitions-with-end`, bindings files and separately authored SHA-bound inspection notes. These local artifacts are preserved in the author worktree; the portable `recorded-run` is the public, read-only handoff.
+`migrate-demo.mjs` imports actual raw capture inputs with separately authored SHA-bound inspection notes. It does not manufacture timing, trigger actions, endpoint states or verdicts. The collector itself supplies only live accessibility assertions. `inspection.mjs` adds visual assertions only when every image has a matching SHA, actual inspection time, visible text, comment and explicit `stateVisible: true`. A transition's first/last notes must explicitly identify the observed `stateId` values; those are post-capture visual observations, not invented real-time assertions.
 
-The integration sequence was:
+A local manifest has this shape (paths resolve relative to the manifest):
 
-1. Register a source snapshot from the exact clean before commit, retained `.app` and immutable fixture runtime; ingest the two raw before captures with explicit image-inspected reachability assertions.
-2. `images --phase before` issues core receipts and writes the exact returned image bytes. Open each with the image tool, then `record --phase before` saves the actual failure notes.
-3. Register the fixed source snapshot, different `.app` and runtime; ingest all eight final cells. The before AI reviews must be stale.
-4. `images --phase after` issues receipts for all sixteen final representative images. Open each, then `record --phase after` consumes the actual, image-bound inspection notes. The full videos remain available to human reviewers.
+```json
+{"captures":[{"path":"raw-cell/capture.json","observations":[{"assetId":"frame-start","sha256":"actual-image-sha256","inspectedAt":"2026-11-14T16:45:00.000Z","stateVisible":true,"stateId":"empty","verdict":"pass","visibleText":["No itinerary yet"],"comment":"Actual image inspection details"}]}]}
+```
 
-Commands use `--core /absolute/path/to/the-integrated-repository --store /absolute/path/to/a-new-local-store`; `before` also needs `--before-source-repo /absolute/path/to/the-exact-before-commit-checkout`. No store record retains an absolute dependency on that checkout. It retains source hashes/private reconstruction blobs and copied evidence bytes. The integration harness does not assert that a receipt proves cognition: actual image reads in the agent session are the basis for the notes.
+Provide a note for every image asset. Use the actual observed verdict/comment; this example is a format illustration, not a prewritten review for a new run. The capture IDs/spec/runtime must already match the explicitly selected target, and this demo importer verifies their persisted capture-attempt charge.
+
+```sh
+node examples/device-hub-app/migrate-demo.mjs ingest --core CORE --store STORE --input manifest.json
+node examples/device-hub-app/migrate-demo.mjs images --core CORE --store STORE --input manifest.json --delivery NEW-DIRECTORY
+# Actually open EACH returned image with the image read tool before proceeding.
+node examples/device-hub-app/migrate-demo.mjs record --core CORE --store STORE --input manifest.json --delivery NEW-DIRECTORY
+node examples/device-hub-app/migrate-demo.mjs export --core CORE --store STORE --input manifest.json --out EXPORT-DIRECTORY
+```
+
+The recorded current data was validated against exact core `da13ee7aa531572834b2d848304b6a38d1955f3d`. Its four module hashes were independently compared to an immutable `git archive` snapshot; subsequent checks used that fixed snapshot, not a changing author's tree. The final merged core must revalidate evidence under any further structural fixes. `integrate-demo.mjs` retains the initial before/after registration flow, now with explicit spec selection and inspection validation; it refuses legacy transitions lacking bindings rather than rewriting their times. Local raw artifacts/private source reconstruction remain preserved in the author worktree; the public bundle is read-only and does not depend on them or another checkout's absolute path. Receipts establish sequencing, not cognition: the actual image-tool reads are the basis for the notes.
 
 For HTML worker integration, load `recorded-run/review.json`, or use `recorded-run/review-data.js` as `globalThis.VISUAL_ACCEPTANCE_DATA`. Copy the `recorded-run/evidence/` directory unchanged alongside the UI export. Asset paths already follow the common `evidence/<sha>.<ext>` contract. The package contains no alternate review HTML and no UI fixture disguised as App screenshots. The full local `artifacts/core-store` can be opened with core CLI/server after integration; no Pi feedback or human approval has been submitted by this demonstration.
 

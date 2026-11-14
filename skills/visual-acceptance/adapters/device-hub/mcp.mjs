@@ -48,6 +48,7 @@ export class StdioMCP {
     const result = await this.request('tools/call', { name, arguments: args });
     if (result.isError) {
       let detail = (result.content || []).filter(b => b.type === 'text').map(b => b.text).join(' ').slice(0, 2000);
+      detail = detail.replace(/\bkey '[^']*'/g, "key '[redacted]'");
       for (const [key, value] of Object.entries(args || {})) {
         if (/key|token|secret/i.test(key) && typeof value === 'string' && value) detail = detail.replaceAll(value, '[redacted]');
       }

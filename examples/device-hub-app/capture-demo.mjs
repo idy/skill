@@ -16,6 +16,14 @@ const root=dirname(fileURLToPath(import.meta.url));
 const output=resolve(option('--out'));
 await mkdir(output,{recursive:false});
 const phase=args.includes('--before')?'before':'after';
+const capturePrefix=bindings.capturePrefix||`${phase}-${Date.now()}`;
+let budgetStore;
+if(args.includes('--core')||args.includes('--store')) {
+ if(!args.includes('--core')||!args.includes('--store'))throw new Error('--core and --store must be supplied together');
+ const {pathToFileURL}=await import('node:url');
+ const {EvidenceStore}=await import(pathToFileURL(resolve(option('--core'),'scripts/lib/store.mjs')));
+ budgetStore=new EvidenceStore(resolve(option('--store')));
+}
 const states=args.includes('--states')?option('--states').split(','):(phase==='before'?['ready']:['empty','ready','error','download']);
 if (states.some(s=>!['empty','ready','error','download'].includes(s))) throw new Error('Unknown demo state');
 const exec=promisify(execFile);
@@ -25,7 +33,7 @@ for (const device of bindings.devices) {
  if (installedExecutableSha256!==build.executableSha256) throw new Error(`Installed app differs from build on ${device.key}`);
  for (const state of states) {
   const plan={
-   id:`${phase}-${device.key}-${state}`,cellId:bindings.cells[`${device.key}-${state}`],
+   id:`${capturePrefix}-${device.key}-${state}`,cellId:bindings.cells[`${device.key}-${state}`],
    sourceSnapshotId:bindings.sourceSnapshotId,buildId:bindings.buildId,runtimeId:bindings.runtimeId,specRev:bindings.specRev,
    workspacePath:join(root,'TrailNotes.xcodeproj'),
    device:{...device,kind:'simulator',orientation:'portrait',os:'iOS 27.0 (24A434)'},
@@ -35,9 +43,14 @@ for (const device of bindings.devices) {
    entryActions:[{tap:'Reset'}],expectedTexts:[],
   };
   if (state==='empty') plan.expectedTexts=['No itinerary yet'];
-  if (state==='ready') {plan.entryActions.push({tap:'Load itinerary'});plan.settleMs=3000;plan.expectedTexts=['Ready for offline use','Summit overnight itinerary'];}
-  if (state==='error') {plan.entryActions.push({tap:'Test connection failure'});plan.settleMs=3000;plan.expectedTexts=['Connection unavailable','Try again'];}
-  if (state==='download') {plan.expectedTexts=['Ready for offline use'];plan.transition={fromStateId:'empty',toStateId:'ready',fromExpectedTexts:['No itinerary yet'],trigger:{tap:'Load itinerary'},simctlVideo:true,sampleOffsetsMs:[600,1600,3600]};}
+  if (state==='ready') {plan.entryActions.push({tap:'Load itinerary'});plan.settleMs=bindings.settleMs??3000;plan.expectedTexts=['Ready for offline use','Summit overnight itinerary'];}
+  if (state==='error') {plan.entryActions.push({tap:'Test connection failure'});plan.settleMs=bindings.settleMs??3000;plan.expectedTexts=['Connection unavailable','Try again'];}
+  if (state==='download') {plan.expectedTexts=['Ready for offline use'];plan.transition={fromStateId:'empty',toStateId:'ready',fromExpectedTexts:['No itinerary yet'],trigger:{tap:'Load itinerary'},simctlVideo:true,sampleOffsetsMs:[600,1600,3600],endSettleMs:bindings.endSettleMs??1000};}
+  if (budgetStore) {
+   const charged=await budgetStore.stepRun({type:'capture_attempt',cellId:plan.cellId});
+   if(charged.exhausted)throw new Error(charged.event.reason);
+   plan.captureAttemptEventId=charged.event.id; // core derives the round from persisted repair events
+  }
   const destination=join(output,`${device.key}-${state}`);
   await writeFile(join(output,`${device.key}-${state}-plan.json`),JSON.stringify(plan,null,2)+'\n',{flag:'wx'});
   const result=await capture(plan,{outputDir:destination});

@@ -1,0 +1,102 @@
+{
+  "delivery": "Actual functions.read image attachments; post-capture inspection, not a real-time assertion",
+  "captures": [
+    {
+      "captureId": "after-v2-retry-tablet-error",
+      "cellId": "cell-8968de44c1268ec114254cc2",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "screen",
+          "sha256": "35a599bbcebe6d9c5658fdb0e9c164ff2326ad5e4a637d0747151ac82562e76c",
+          "inspectedAt": "2026-11-14T16:42:05.491496+00:00",
+          "stateVisible": true,
+          "verdict": "question",
+          "stateId": "error",
+          "visibleText": [
+            "Connection unavailable",
+            "Your itinerary is safe. Reconnect and try the download again.",
+            "Try again"
+          ],
+          "comment": "The error title, explanation and Try again are visible, but a faint teal progress track remains to the right of the error card. This may be a crossfade; stable error-state appearance is not yet established. Preserve this attempt and observe again after settling."
+        }
+      ]
+    },
+    {
+      "captureId": "after-v2-retry-tablet-download",
+      "cellId": "cell-d62a00ee18a37f7201e8410d",
+      "specRev": "demo-spec-2",
+      "observations": [
+        {
+          "assetId": "frame-start",
+          "sha256": "756c5b8529b34d53d79deb3e1618da7ac9ac5fb317e35633cc3d266edf4ef069",
+          "inspectedAt": "2026-11-14T16:42:05.491496+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "stateId": "empty",
+          "visibleText": [
+            "No itinerary yet",
+            "Load itinerary",
+            "Test connection failure"
+          ],
+          "comment": "Actual starting image shows the empty itinerary state and both load entry actions."
+        },
+        {
+          "assetId": "frame-1",
+          "sha256": "ba44f476f1b5a2510fe9b4aeb3c5839642aeded3c0f3d01558cad885d81e817a",
+          "inspectedAt": "2026-11-14T16:42:05.491496+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "visibleText": [
+            "Preparing your route",
+            "Downloading trail details and offline maps\u2026",
+            "Keep this screen open."
+          ],
+          "comment": "Actual loading image shows the route preparation text; progress is near zero in frame-1 and visibly advanced in frame-2."
+        },
+        {
+          "assetId": "frame-2",
+          "sha256": "f0290a0835d05392b0c3e20967e8102dcfa886c9af16fb430a0c1cea9ad3d600",
+          "inspectedAt": "2026-11-14T16:42:05.491496+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "visibleText": [
+            "Preparing your route",
+            "Downloading trail details and offline maps\u2026",
+            "Keep this screen open."
+          ],
+          "comment": "Actual loading image shows the route preparation text; progress is near zero in frame-1 and visibly advanced in frame-2."
+        },
+        {
+          "assetId": "frame-3",
+          "sha256": "db347ebb7ef131323bc08c7ed191e86d6b2427349462ceb9b41569bdfd4355d4",
+          "inspectedAt": "2026-11-14T16:42:05.491496+00:00",
+          "stateVisible": true,
+          "verdict": "pass",
+          "visibleText": [
+            "Preparing your route",
+            "Downloading trail details and offline maps\u2026",
+            "Summit overnight itinerary"
+          ],
+          "comment": "This intermediate image catches the crossfade: loading is still prominent and incoming itinerary content is faint underneath. It is not a stable ready screenshot."
+        },
+        {
+          "assetId": "frame-end",
+          "sha256": "dea6fdec1b92e6f28aceceb2bd0e909bcd3f71d43f65ebe8f8839f4b799cf007",
+          "inspectedAt": "2026-11-14T16:42:05.491496+00:00",
+          "stateVisible": true,
+          "verdict": "question",
+          "stateId": "ready",
+          "visibleText": [
+            "Ready for offline use",
+            "Summit overnight itinerary",
+            "Pine Ridge Loop",
+            "Preparing your route",
+            "Offline maps include the full trail and emergency exit routes"
+          ],
+          "comment": "The ready card is visible, but outgoing preparation text and progress still overlap it. This post-capture inspection does not establish a stable ending appearance; collect a new ending observation after a bounded settling delay."
+        }
+      ]
+    }
+  ]
+}
