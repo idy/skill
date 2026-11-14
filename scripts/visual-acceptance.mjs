@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
 import { readFile } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { EvidenceStore } from './lib/store.mjs';
@@ -37,4 +38,6 @@ export async function main(argv = process.argv.slice(2)) {
     default: throw new Error(`Unknown command: ${command}`);
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main().then(result=>{ if(result !== undefined) process.stdout.write(JSON.stringify(result,null,2)+'\n'); }).catch(error=>{ process.stderr.write(JSON.stringify({error:error.message})+'\n'); process.exitCode=1; });
+let isCLI = false;
+try { isCLI = !!process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href; } catch { /* Imported module or stdin entry. */ }
+if (isCLI) main().then(result=>{ if(result !== undefined) process.stdout.write(JSON.stringify(result,null,2)+'\n'); }).catch(error=>{ process.stderr.write(JSON.stringify({error:error.message})+'\n'); process.exitCode=1; });
