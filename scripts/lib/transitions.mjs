@@ -24,7 +24,8 @@ export function transitionFindings(capture, row) {
   for (const [stateId, asset, label] of [[row.fromStateId, startFrame, 'start'], [row.toStateId, endFrame, 'end']]) {
     if (!asset || !capture.assertions.some(a => a.stateId === stateId && a.result === 'pass' && a.basis === 'visual' && a.evidenceAssetIds.includes(asset.id))) blockers.push(`Transition ${label} state needs a visual assertion with stateId and its endpoint asset reference`);
   }
-  if (frames.length && new Set(frames.map(a => a.sha256)).size < 2) blockers.push('All representative frames have identical pixels; visible transition evidence is insufficient. Real waiting may repeat frames, but needs an observed change or additional usable temporal evidence before approval');
+  if (frames.some(a => !/^[a-f0-9]{64}$/.test(a.pixelSha256 ?? ''))) blockers.push('Transition frames require verified decoded pixel fingerprints; unavailable or corrupt images cannot establish visible change');
+  else if (frames.length && new Set(frames.map(a => a.pixelSha256)).size < 2) blockers.push('All representative frames have identical pixels; visible transition evidence is insufficient. Real waiting may repeat frames, but needs an observed change or additional usable temporal evidence before approval');
   const gaps = frames.slice(1).map((a, i) => a.offsetMs - frames[i].offsetMs);
   limitations.push(`Sampled transition frames only (${frames.length} frames, largest gap ${gaps.length ? Math.max(...gaps) : 0}ms); unobserved gaps cannot establish continuous smoothness`);
   if (capture.assets.some(a => a.kind === 'video')) limitations.push('Video retained for temporal review; core checks its signature, not playback, frame rate or smoothness');
