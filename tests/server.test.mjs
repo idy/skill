@@ -7,7 +7,7 @@ import { fixture } from './helpers.mjs';
 import { startReviewServer } from '../scripts/lib/server.mjs';
 
 test('loopback review saves drafts without dispatch; only explicit token/source-checked batches dispatch',async t=>{
-  const f=await fixture(t),cap=await f.store.addCapture(f.capture()),ui=join(f.dir,'ui');await mkdir(ui);await writeFile(join(ui,'index.html'),'<html>Test review resources only</html>');
+  const f=await fixture(t),cap=await f.store.addCapture(f.capture()),ui=join(f.dir,'ui');await mkdir(ui);await writeFile(join(ui,'index.html'),'<html>Test review resources only</html>');await writeFile(join(ui,'ui-files.json'),JSON.stringify({files:['index.html']}));
   const deliveries=[];const server=await startReviewServer(f.store,{reviewDir:ui,onFeedback:async b=>deliveries.push(b)});t.after(()=>server.close());
   assert.match(server.url,/^http:\/\/127\.0\.0\.1:/);const session=await fetch(server.url+'/api/session').then(r=>r.json());
   const headers={'Content-Type':'application/json',Origin:server.url,'X-Visual-Acceptance-Token':session.token};const batch={...f.batch(cap),sourceId:session.sourceId};

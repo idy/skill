@@ -110,6 +110,6 @@ test('budgets stop with specific reasons and retain unresolved history',async t=
 
 test('export keeps private paths/receipts/source snapshots out and safely escapes script data',async t=>{
   const f=await fixture(t,p=>{p.project.name='Test </script><script>alert(1)</script>';});await f.store.addCapture(f.capture());
-  const ui=join(f.dir,'ui');const {mkdir}=await import('node:fs/promises');await mkdir(ui);await writeFile(join(ui,'index.html'),'<script src="review-data.js"></script>');
+  const ui=join(f.dir,'ui');const {mkdir}=await import('node:fs/promises');await mkdir(ui);await writeFile(join(ui,'index.html'),'<script src="review-data.js"></script>');await writeFile(join(ui,'ui-files.json'),JSON.stringify({files:['index.html']}));
   const out=join(f.dir,'export');await f.store.export(out,ui);const js=await readFile(join(out,'review-data.js'),'utf8');assert.ok(!js.includes('</script>'));assert.ok(!js.includes(f.dir));assert.ok(!js.includes('sourceBlobs'));assert.ok(!js.includes('reconstruction'));assert.ok(js.includes('dirtyDiffSha256'));assert.ok(js.includes('VISUAL_ACCEPTANCE_DATA'));
 });

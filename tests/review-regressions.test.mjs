@@ -66,7 +66,7 @@ test('P2: delayed human feedback validates against its referenced spec after cel
 });
 
 test('P2: persisted feedback retries under a fresh authenticated server without rebinding source or history',async t=>{
-  const f=await fixture(t),cap=await f.store.addCapture(f.capture()),ui=join(f.dir,'ui');await mkdir(ui);await writeFile(join(ui,'index.html'),'<html>test resources</html>');
+  const f=await fixture(t),cap=await f.store.addCapture(f.capture()),ui=join(f.dir,'ui');await mkdir(ui);await writeFile(join(ui,'index.html'),'<html>test resources</html>');await writeFile(join(ui,'ui-files.json'),JSON.stringify({files:['index.html']}));
   const first=await startReviewServer(f.store,{reviewDir:ui,onFeedback:async()=>{throw new Error('transient callback failure');}});t.after(()=>first.close());const originalSession=await fetch(first.url+'/api/session').then(r=>r.json());const batch={...f.batch(cap),sourceId:originalSession.sourceId};
   const post=(server,session,value,headers={})=>fetch(server.url+'/api/feedback',{method:'POST',headers:{Origin:server.url,'Content-Type':'application/json','X-Visual-Acceptance-Token':session.token,...headers},body:JSON.stringify(value)});
   const failed=await post(first,originalSession,batch);assert.equal(failed.status,503);assert.equal((await failed.json()).accepted,true);await first.close();

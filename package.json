@@ -9,7 +9,13 @@
   "bin": {"visual-acceptance": "scripts/visual-acceptance.mjs"},
   "files": ["README.md", "docs/", "schemas/", "scripts/", "extensions/", "skills/", "examples/"],
   "pi": {"skills": ["./skills"], "extensions": ["./extensions/visual-acceptance.ts"]},
-  "scripts": {"test": "node --test tests/*.test.mjs", "check": "node --check scripts/visual-acceptance.mjs && node --check scripts/lib/store.mjs && node --check scripts/lib/server.mjs"},
+  "scripts": {
+    "test": "node --test tests/*.test.mjs skills/visual-acceptance/review/tests/*.test.mjs skills/visual-acceptance/adapters/device-hub/*.test.mjs",
+    "test:browser": "node --test skills/visual-acceptance/review/tests/browser/review-ui.browser.mjs",
+    "browser:install": "playwright install chromium",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {"playwright": "1.65.1"},
   "dependencies": {"jpeg-js": "^0.4.4", "pngjs": "^7.0.0"},
   "peerDependencies": {"@earendil-works/pi-coding-agent": "*", "typebox": "*"},
   "peerDependenciesMeta": {"@earendil-works/pi-coding-agent": {"optional": true}, "typebox": {"optional": true}}

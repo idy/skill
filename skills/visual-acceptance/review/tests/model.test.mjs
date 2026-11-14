@@ -192,7 +192,7 @@ test('feedback batch matches the core contract shape; decisions bridge to verdic
     const { validateFeedback } = await import(pathToFileURL(core));
     const spec = { cells: v.cells.map(x => ({ id: x.id })) };
     const captureById = new Map(); v.captureById.forEach((info, id) => captureById.set(id, { ...info.capture, cellId: info.cellId }));
-    assert.doesNotThrow(() => validateFeedback(plain(batch), { projectId: v.project.id, sourceId: 'src-1', spec, captureById }));
+    assert.doesNotThrow(() => validateFeedback(plain(batch), { projectId: v.project.id, sourceId: 'src-1', specByRev: new Map(batch.edits.map(e => [e.specRev, spec])), captureById }));
   }
 });
 

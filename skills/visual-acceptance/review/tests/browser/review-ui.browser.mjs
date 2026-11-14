@@ -6,12 +6,10 @@
 // core's real loopback server and submits only clearly-labelled automated test
 // feedback into that temporary copy.
 //
-// Run (no repo dependency is added; playwright-core is resolved from env):
-//   PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core \
-//   CHROME=/path/to/chrome-headless-shell \
-//   [VA_CORE_ROOT=/path/to/core/checkout VA_CORE_STORE=/path/to/store] \
-//   [VA_SHOTS=/tmp/va-review-ui-shots] \
-//   node --test skills/visual-acceptance/review/tests/browser/review-ui.browser.mjs
+// Run after `npm ci --ignore-scripts --omit=peer` and `npm run browser:install`.
+// Optional overrides: PLAYWRIGHT_CORE=/path/to/node_modules/playwright-core,
+// CHROME=/path/to/chrome-headless-shell, VA_CORE_ROOT and VA_CORE_STORE.
+// Browser packages are development dependencies; Pi/runtime installs omit them.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -22,8 +20,8 @@ import { pathToFileURL } from 'node:url';
 import { writeBundle, cellIdFor, REVIEW_DIR } from '../support/fixture.mjs';
 import { startMockServer } from '../support/mock-review-server.mjs';
 
-const PW = process.env.PLAYWRIGHT_CORE;
-const skip = !PW ? 'set PLAYWRIGHT_CORE (and CHROME) to run browser tests' : false;
+const PW = process.env.PLAYWRIGHT_CORE || 'playwright';
+const skip = false;
 const SHOTS = process.env.VA_SHOTS || join(tmpdir(), 'va-review-ui-shots');
 mkdirSync(SHOTS, { recursive: true });
 const id = (scenarioId, stateId, deviceId, orientation, variantId = 'default') => cellIdFor({ scenarioId, stateId, deviceId, orientation, variantId });
@@ -63,7 +61,7 @@ async function waitSaved(page) {
 
 test.before(async () => {
   if (skip) return;
-  const require = createRequire(join(PW, 'package.json'));
+  const require = createRequire(import.meta.url);
   chromium = require(PW).chromium;
   browser = await chromium.launch({ executablePath: process.env.CHROME || undefined });
   bundle = mkdtempSync(join(tmpdir(), 'va-review-bundle-'));
@@ -543,7 +541,9 @@ test('core integration: real core server + copy of a real store (automated UI te
     assert.equal(drafts.edits.length, 1); assert.equal(drafts.edits[0].undecided, true);
     await page.keyboard.press('Escape');
     await page.keyboard.press('3');
-    await page.waitForFunction(() => /已保存/.test(document.getElementById('save-state')?.textContent || '') || document.getElementById('review').hidden || true);
+    // A successful decision advances the frozen queue, so the NEW cell's save
+    // label is intentionally empty. Wait on the original draft and busy flag.
+    await page.waitForFunction(key => window.__vaReviewApp.saveStates.get(key)?.status === 'saved' && !window.__vaReviewApp.busy, withHistory.id + '@' + withHistory.capture.id);
     await page.click('#btn-back-matrix');
     await page.click('#btn-submit');
     await page.click('#btn-send-batch');

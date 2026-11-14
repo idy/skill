@@ -32,7 +32,7 @@ test('Pi host tools return one image, require effective context and persist one 
   w.appendImage(image);await w.run('visual_acceptance_record',review);
   const path=join(f.dir,'feedback.json');await writeFile(path,JSON.stringify(f.batch(cap)));const first=await w.run('visual_acceptance_feedback_import',{path});await w.run('visual_acceptance_feedback_import',{path});
   assert.equal(first.details.delivered,true);assert.equal(first.details.delivery,'persisted');assert.equal(w.messages.length,1);assert.deepEqual(w.messages[0].options,{triggerTurn:true,deliverAs:'followUp'});
-  for(const value of ['static-test-export','test-project','batch-1',cap.cellId,cap.id,cap.buildId,cap.runtimeId,cap.specRev,'/skill:must-never-expand'])assert.ok(w.messages[0].message.content.includes(value),value);
+  for(const value of ['static-test-export','test-project','batch-1',cap.cellId,cap.id,cap.buildId,cap.runtimeId,cap.specRev,cap.assets[0].id,cap.assets[0].sha256,cap.assets[0].path,f.source.head,(await f.store.record('builds',cap.buildId)).artifact.sha256,'/skill:must-never-expand'])assert.ok(w.messages[0].message.content.includes(value),value);
   assert.ok(sm.getBranch().some(e=>e.type==='custom' && e.customType==='visual-acceptance-delivered' && e.data.messageEntryId));
   loaded.runtime.getSettings=()=>({images:{blockImages:true}});await assert.rejects(w.run('visual_acceptance_image',{cellId:cap.cellId}),/blocked/);
 });

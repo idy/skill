@@ -1,25 +1,16 @@
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { readFile, writeFile, rename, readdir, lstat } from 'node:fs/promises';
-import { join, resolve, extname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFile, writeFile, rename } from 'node:fs/promises';
+import { join, extname } from 'node:path';
 import { check, validateFeedback } from './contracts.mjs';
-const defaultReviewDir = fileURLToPath(new URL('../../skills/visual-acceptance/review/', import.meta.url));
+import { defaultReviewDir, reviewFiles } from './review-files.mjs';
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.jpg':'image/jpeg', '.mp4':'video/mp4', '.webm':'video/webm', '.json':'application/json; charset=utf-8' };
 
 export async function startReviewServer(store, { port = 0, reviewDir = defaultReviewDir, onFeedback } = {}) {
   check(Number.isInteger(port) && port >= 0 && port <= 65535, 'Invalid port');
   const state = await store.state(), projectId = state.project.id;
   const sourceId = `browser-${randomBytes(12).toString('hex')}`, token = randomBytes(32).toString('hex');
-  const files = new Map();
-  async function scan(dir, prefix = '') {
-    for (const name of await readdir(dir)) {
-      const path = join(dir,name), stat = await lstat(path); check(!stat.isSymbolicLink(), 'Review asset symlinks forbidden');
-      if (stat.isDirectory()) await scan(path, `${prefix}${name}/`);
-      else if (stat.isFile() && mime[extname(name)]) files.set(`/${prefix}${name}`, path);
-    }
-  }
-  await scan(resolve(reviewDir));
+  const files = await reviewFiles(reviewDir);
   let origin;
   const json = (res, status, value) => { res.writeHead(status, { 'Content-Type': mime['.json'] }); res.end(JSON.stringify(value)); };
   async function body(req) {

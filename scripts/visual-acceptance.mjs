@@ -7,11 +7,12 @@ import { pathToFileURL } from 'node:url';
 import { EvidenceStore } from './lib/store.mjs';
 import { startReviewServer } from './lib/server.mjs';
 import { check } from './lib/contracts.mjs';
+import { exportDemo } from './lib/demo.mjs';
 
 export async function main(argv = process.argv.slice(2)) {
   const command = argv[0];
   const { values } = parseArgs({ args:argv.slice(1), strict:true, options:{ store:{type:'string',default:'.visual-acceptance'},input:{type:'string'},out:{type:'string'},repo:{type:'string',default:'.'},related:{type:'string',multiple:true,default:[]},port:{type:'string',default:'0'},help:{type:'boolean',default:false} } });
-  if (!command || command === 'help' || values.help) return { commands:'init | spec | source | build | runtime | target | capture | status | export | serve | feedback-import | run-start | run-step', usage:'visual-acceptance <command> --store .visual-acceptance [--input input.json] [--out review-directory] [--repo . --related path] [--port 0]', contract:'docs/contracts.md' };
+  if (!command || command === 'help' || values.help) return { commands:'init | spec | source | build | runtime | target | capture | status | export | demo-export | serve | feedback-import | run-start | run-step', usage:'visual-acceptance <command> --store .visual-acceptance [--input input.json] [--out review-directory] [--repo . --related path] [--port 0]', contract:'docs/contracts.md' };
   const store = new EvidenceStore(values.store);
   async function input() { check(values.input,'--input required'); return JSON.parse(await readFile(resolve(values.input),'utf8')); }
   switch (command) {
@@ -24,6 +25,7 @@ export async function main(argv = process.argv.slice(2)) {
     case 'capture': { const data = await input(); for (const a of data.assets ?? []) a.path = resolve(dirname(resolve(values.input)),a.path); return store.addCapture(data); }
     case 'status': { const data = await store.reviewData(), state = await store.state(); const run = state.activeRunId ? await store.currentRun(state) : null; return {project:data.project,target:data.target,summary:data.summary,cells:data.cells.map(c=>({id:c.id,status:c.status,staleReasons:c.staleReasons,blockers:c.blockers})),run}; }
     case 'export': check(values.out,'--out required'); return store.export(values.out);
+    case 'demo-export': check(values.out,'--out required (a new directory)'); return exportDemo(values.out);
     case 'feedback-import': return store.importFeedback(await input());
     case 'run-start': return store.startRun();
     case 'run-step': return store.stepRun(await input());

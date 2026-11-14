@@ -3,7 +3,7 @@ import { resolve, join, relative, dirname, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { defaultReviewDir, reviewFiles } from './review-files.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { AI_REVIEW_PROTOCOL, check, object, text, id, list, choice, time, canonical, sha256, identity, validateProject, validateFeedback, staleReasons, imageSetHash } from './contracts.mjs';
 import { decodeImage, hashArtifact } from './media.mjs';
@@ -358,14 +358,17 @@ export class EvidenceStore {
       await this.immutable('aiReviews', record); state.aiReviews.push(record.id); return { state, value: record };
     });
   }
-  async export(out, reviewDir = fileURLToPath(new URL('../../skills/visual-acceptance/review/', import.meta.url))) {
+  async export(out, reviewDir = defaultReviewDir) {
     const destination = resolve(out); check(destination !== this.root && !destination.startsWith(this.root + '/'), 'Export outside the private store');
+    // Validate all manifest entries before creating or writing any output.
+    const files = await reviewFiles(reviewDir);
     const data = await this.reviewData(); await mkdir(destination, { recursive: true });
-    async function copyDirectory(src, dest) {
-      await mkdir(dest, { recursive: true });
-      for (const name of await readdir(src)) { const path = join(src, name), stat = await lstat(path); check(!stat.isSymbolicLink(), 'Review assets cannot contain symlinks'); if (stat.isDirectory()) await copyDirectory(path, join(dest,name)); else if (stat.isFile()) await copyFile(path, join(dest,name)); }
+    for (const [name, source] of files) {
+      const target = join(destination, name.slice(1));
+      try { check((await lstat(target)).isFile(), 'Export UI target must be a regular file (no symlinks)'); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      await copyFile(source, target);
     }
-    await copyDirectory(reviewDir, destination);
     for (const capture of data.cells.flatMap(c => c.captures)) for (const asset of capture.assets) {
       try { const bytes = await this.verifyAsset(asset); const path = join(destination, asset.path); await mkdir(dirname(path), { recursive: true }); await writeFile(path, bytes); } catch { /* explicit blockers already included in view model */ }
     }
