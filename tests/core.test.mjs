@@ -57,13 +57,26 @@ test('new target makes other cells stale; final pass requires whole same-build m
   await f.store.addRuntime({...f.runtime,id:'drift',driftDetected:true});await assert.rejects(f.store.setTarget({buildId:'build-1',runtimeId:'drift',specRev:'spec-1'}),/drift/);
 });
 
+test('final AI pass needs complete current coverage and a policy/spec change invalidates it',async t=>{
+  const f=await fixture(t,p=>{p.spec.cells=p.spec.cells.slice(0,1);}),cap=await f.store.addCapture(f.capture());
+  const {receipt}=await f.store.provideImage({cellId:cap.cellId,...f.imageOptions});await f.store.recordAI(f.review(cap,[receipt]),f.imageOptions);assert.equal((await f.store.reviewData()).summary.finalAIPass,true);
+  const revised=structuredClone(f.input);revised.spec.revision='spec-2';revised.spec.cells[0].checkpoints=['New visible requirement'];await f.store.setSpec(revised);
+  let data=await f.store.reviewData();assert.equal(data.summary.finalAIPass,false);assert.equal(data.cells[0].aiReviews[0].stale,true);
+  await f.store.setTarget({buildId:'build-1',runtimeId:'runtime-1',specRev:'spec-2'});const next=await f.store.addCapture({...f.capture('capture-spec-2'),specRev:'spec-2'});
+  const image=await f.store.provideImage({cellId:next.cellId,...f.imageOptions});await f.store.recordAI(f.review(next,[image.receipt]),f.imageOptions);
+  revised.policy={revision:'policy-2'};await f.store.setSpec(revised);data=await f.store.reviewData();assert.equal(data.summary.finalAIPass,false);assert.equal(data.cells[0].currentAIReview,null);assert.match(data.cells[0].aiReviews.at(-1).staleReasons.join(),/policy changed/);
+});
+
 test('API/mount assertions and repeated home screenshots across distinct states are blocked',async t=>{
   const f=await fixture(t);await f.store.addCapture(f.capture());const duplicate=await f.store.addCapture(f.capture('capture-filled',1));assert.equal(duplicate.status,'blocked');assert.match(duplicate.blockers.join(),/reused/);
   const api=f.capture('capture-api');api.assertions[0].basis='api';const blocked=await f.store.addCapture(api);assert.match(blocked.blockers.join(),/No visual assertion/);
 });
 
 test('transitions need real actions, start/end identities, ordered frames and per-frame review',async t=>{
-  const f=await fixture(t),input=f.capture('transition-static',2);input.transition={fromStateId:'empty',toStateId:'filled',startedAt:timestamp,endedAt:'2026-01-01T00:00:01.000Z'};
+  const f=await fixture(t),input=f.capture('transition-static',2);
+  const unreachable=f.capture('transition-unreachable',2);unreachable.status='blocked';unreachable.assets=[];unreachable.assertions=[];unreachable.blockers=['Starting state was unreachable; collection stopped before a transition began'];
+  const missing=await f.store.addCapture(unreachable);assert.equal(missing.status,'blocked');assert.equal(missing.transition,undefined);
+  input.transition={fromStateId:'empty',toStateId:'filled',startedAt:timestamp,endedAt:'2026-01-01T00:00:01.000Z'};
   const blocked=await f.store.addCapture(input);assert.equal(blocked.status,'blocked');assert.match(blocked.blockers.join(),/time-ordered/);
   const image2=join(f.dir,'frame2.png'),png=new PNG({width:2,height:2});png.data.fill(0);await writeFile(image2,PNG.sync.write(png));
   input.id='transition-sequence';input.assets=[{...input.assets[0],kind:'frame',offsetMs:0},{...input.assets[0],id:'image-2',kind:'frame',path:image2,offsetMs:500,capturedAt:'2026-01-01T00:00:00.500Z'}];
@@ -88,10 +101,12 @@ test('budgets stop with specific reasons and retain unresolved history',async t=
   const run=await f.store.currentRun(await f.store.state());assert.equal(run.status,'stopped');assert.match(run.unresolved.join(),/Image budget/);
   await f.store.startRun();const repair={type:'repair',reason:'Synthetic root cause',affectedCellIds:[cap.cellId],regressionCellIds:[cap.cellId]};await f.store.stepRun(repair);assert.equal((await f.store.stepRun(repair)).exhausted,true);
   await f.store.startRun();for(let n=0;n<2;n++) assert.equal((await f.store.stepRun({type:'capture_attempt',cellId:cap.cellId,round:0})).exhausted,false);assert.equal((await f.store.stepRun({type:'capture_attempt',cellId:cap.cellId,round:0})).exhausted,true);
+  await f.store.startRun();const image=await f.store.provideImage({cellId:cap.cellId,...f.imageOptions});const expired=Date.now()+31*60000;t.mock.method(Date,'now',()=>expired);
+  await assert.rejects(f.store.recordAI(f.review(cap,[image.receipt]),f.imageOptions),/Time budget reached/);assert.match((await f.store.currentRun(await f.store.state())).unresolved.join(),/Time budget reached/);
 });
 
 test('export keeps private paths/receipts/source snapshots out and safely escapes script data',async t=>{
   const f=await fixture(t,p=>{p.project.name='Test </script><script>alert(1)</script>';});await f.store.addCapture(f.capture());
   const ui=join(f.dir,'ui');const {mkdir}=await import('node:fs/promises');await mkdir(ui);await writeFile(join(ui,'index.html'),'<script src="review-data.js"></script>');
-  const out=join(f.dir,'export');await f.store.export(out,ui);const js=await readFile(join(out,'review-data.js'),'utf8');assert.ok(!js.includes('</script>'));assert.ok(!js.includes(f.dir));assert.ok(!js.includes('dirtyDiffSha256'));assert.ok(js.includes('VISUAL_ACCEPTANCE_DATA'));
+  const out=join(f.dir,'export');await f.store.export(out,ui);const js=await readFile(join(out,'review-data.js'),'utf8');assert.ok(!js.includes('</script>'));assert.ok(!js.includes(f.dir));assert.ok(!js.includes('sourceBlobs'));assert.ok(!js.includes('reconstruction'));assert.ok(js.includes('dirtyDiffSha256'));assert.ok(js.includes('VISUAL_ACCEPTANCE_DATA'));
 });

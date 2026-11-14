@@ -183,7 +183,8 @@ export class EvidenceStore {
       if (value.assertions.some(a => a.result !== 'pass')) value.blockers.push('Capture assertions failed or unknown');
       if (!value.assertions.some(a => a.result === 'pass' && a.basis === 'visual' && a.evidenceAssetIds.length)) value.blockers.push('No visual assertion; API/mount success cannot establish a visible state');
       const row = spec.states.find(s => s.id === cell.stateId);
-      if (row.kind === 'transition') {
+      if (row.kind === 'transition' && !value.transition) value.blockers.push('Transition metadata missing or state unreachable; cannot verify start/end or temporal evidence');
+      if (row.kind === 'transition' && value.transition) {
         const t = value.transition;
         check(t?.fromStateId === row.fromStateId && t?.toStateId === row.toStateId, 'Transition start/end state mismatch');
         time(t.startedAt, 'transition.startedAt'); time(t.endedAt, 'transition.endedAt'); check(Date.parse(t.endedAt) > Date.parse(t.startedAt), 'Transition end must follow start');
@@ -235,8 +236,9 @@ export class EvidenceStore {
       const status = !capture ? 'missing' : blockers.length ? 'blocked' : reasons.length ? 'stale' : currentAIReview?.verdict ?? 'unreviewed';
       cells.push({ ...cell, status, staleReasons: [...new Set(reasons)], blockers, capture, captures: history, aiReviews, humanReviews, currentAIReview, currentHumanReview });
     }
-    const builds = await this.records(state, 'builds'), runtimes = await this.records(state, 'runtimes');
+    const builds = await this.records(state, 'builds'), runtimes = await this.records(state, 'runtimes'), sources = await this.records(state, 'sources');
     return { schemaVersion: 1, project: state.project, spec, target: state.target, policy: state.policy, generatedAt: now(), cells,
+      sources: sources.map(s => ({ id: s.id, head: s.head, dirty: s.dirty, dirtyDiffSha256: s.dirtyDiffSha256, relatedInputCount: s.related.length, relatedInputsSha256: sha256(canonical(s.related)) })),
       builds: builds.map(b => ({ ...b, artifact: { sha256: b.artifact.sha256, bytes: b.artifact.bytes, kind: b.artifact.kind } })), runtimes,
       summary: { total: cells.length, aiPass: cells.filter(c => c.status === 'pass').length, finalAIPass: cells.length > 0 && cells.every(c => c.status === 'pass'), humanPass: cells.filter(c => c.currentHumanReview?.verdict === 'pass').length },
       storage: { mode: 'local-single-reviewer', drafts: 'browser-local and server when available', collaboration: false } };
@@ -321,7 +323,11 @@ export class EvidenceStore {
       check(capture?.id === input.captureId, 'Review capture is no longer current');
       check(capture.status !== 'blocked' && capture.blockers.length === 0, 'Evidence blocked');
       check(staleReasons({ ...capture, captureId: capture.id }, capture, state.target, state.policy.revision).length === 0 && state.specRev === capture.specRev, 'Review target is stale');
-      const run = await this.currentRun(state); check(run.status === 'active' && Date.now() - Date.parse(run.startedAt) < run.policy.maxMinutes * 60000, 'Run stopped or time budget reached; save unresolved reason and start an explicitly authorized new run');
+      const run = await this.currentRun(state); check(run.status === 'active', `Run stopped: ${run.unresolved.join('; ') || 'completed'}`);
+      if (Date.now() - Date.parse(run.startedAt) >= run.policy.maxMinutes * 60000) {
+        const stopped = await this.budgetEvent(state, { type: 'stop', cellId: input.cellId, captureId: input.captureId, reason: 'Time budget reached before recording review' });
+        throw new Error(stopped.event.reason);
+      }
       const receipts = await Promise.all(input.receiptIds.map(v => { check(state.receipts.includes(v), 'Unknown receipt'); return this.record('receipts', v); }));
       for (const asset of imageAssets(capture)) {
         await this.verifyAsset(asset);

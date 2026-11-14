@@ -83,5 +83,9 @@ export async function startReviewServer(store, { port = 0, reviewDir = defaultRe
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   await new Promise((ok,fail)=> { server.once('error',fail); server.listen(port,'127.0.0.1',()=>{ server.off('error',fail); ok(); }); });
   origin = `http://127.0.0.1:${server.address().port}`;
-  return { url:origin,sourceId,close:async()=> { server.closeAllConnections(); await new Promise((ok,fail)=>server.close(e=>e?fail(e):ok())); } };
+  let closePromise;
+  return { url:origin,sourceId,close:()=> {
+    if (!closePromise) { server.closeAllConnections(); closePromise = new Promise((ok,fail)=>server.close(e=>e?fail(e):ok())); }
+    return closePromise;
+  } };
 }
