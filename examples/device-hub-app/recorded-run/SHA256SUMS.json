@@ -1,0 +1,172 @@
+[
+  {
+    "path": "INDEX.md",
+    "sha256": "da699c45308a03ea07b1f8726fd2b6bec72e8c2ad422491e62e8e4007c7636a5",
+    "bytes": 9424
+  },
+  {
+    "path": "builds/after-TrailNotes.app.zip",
+    "sha256": "ad88bc719d147080ae4adc100e989f2a031b40676504b1ab54a37046e0c67a27",
+    "bytes": 83820
+  },
+  {
+    "path": "builds/after-manifest.json",
+    "sha256": "46af7fd27009f707708bd8b8af239469d454a5d6b3b5bef03c711db575cfc6f8",
+    "bytes": 754
+  },
+  {
+    "path": "builds/before-TrailNotes.app.zip",
+    "sha256": "3c3f10824d47797a6c1cdf9bdb1f1c924c03cc2262fffbad47e2320f75131330",
+    "bytes": 84094
+  },
+  {
+    "path": "builds/before-manifest.json",
+    "sha256": "439ac0af08fce25b6a3eb43c9a00687ace13e04dd46945b7a9ab41723b075954",
+    "bytes": 756
+  },
+  {
+    "path": "captures-after-inspection.json",
+    "sha256": "6efb7453780ffc3c0e1e8d304dd4d7b7a5fb083aa2e7ad88ccc7d1da6329625c",
+    "bytes": 3582
+  },
+  {
+    "path": "captures-before-inspection.json",
+    "sha256": "b079c79c6d82677186480ba530b66b82ea6081f9e4be3000f183e1da393ae746",
+    "bytes": 1863
+  },
+  {
+    "path": "evidence/1898d03bf2cf92336339215a032837e7d4533c1a2f8524143532ec83b4e47e13.png",
+    "sha256": "1898d03bf2cf92336339215a032837e7d4533c1a2f8524143532ec83b4e47e13",
+    "bytes": 54112
+  },
+  {
+    "path": "evidence/343a2878046e3327bd8a3a8ae2128504450a78748079a4d27b3cf82c00f5cb90.png",
+    "sha256": "343a2878046e3327bd8a3a8ae2128504450a78748079a4d27b3cf82c00f5cb90",
+    "bytes": 164017
+  },
+  {
+    "path": "evidence/3b98907a9c852e3e2e5437776ca2564570edf1c791a249bd47ed4e838d35ec99.mp4",
+    "sha256": "3b98907a9c852e3e2e5437776ca2564570edf1c791a249bd47ed4e838d35ec99",
+    "bytes": 513729
+  },
+  {
+    "path": "evidence/40d02300a6b95ff0e25b92368891e8b65da480e9a853cbb302b514546b1abc55.png",
+    "sha256": "40d02300a6b95ff0e25b92368891e8b65da480e9a853cbb302b514546b1abc55",
+    "bytes": 133478
+  },
+  {
+    "path": "evidence/42ff56bcaf4e4f8dc89aec3d832bc6f35336dc2580a0945c208844782f390da1.png",
+    "sha256": "42ff56bcaf4e4f8dc89aec3d832bc6f35336dc2580a0945c208844782f390da1",
+    "bytes": 66883
+  },
+  {
+    "path": "evidence/45325879ddcd4db052368828ca6490c2f8421962d25ea6dd295a0ba43d4b3b18.png",
+    "sha256": "45325879ddcd4db052368828ca6490c2f8421962d25ea6dd295a0ba43d4b3b18",
+    "bytes": 59334
+  },
+  {
+    "path": "evidence/4a0f4ec98cb34a7db648bdc0da11d56a12200d15b4e5fd3a8a0918624ed47781.png",
+    "sha256": "4a0f4ec98cb34a7db648bdc0da11d56a12200d15b4e5fd3a8a0918624ed47781",
+    "bytes": 73972
+  },
+  {
+    "path": "evidence/53e2b8a603c2e80a98db22db72f5da46ba34d95c4d29758a8ce27632e573f9f4.png",
+    "sha256": "53e2b8a603c2e80a98db22db72f5da46ba34d95c4d29758a8ce27632e573f9f4",
+    "bytes": 153374
+  },
+  {
+    "path": "evidence/5884424fd72167e5c2dfa04c8782924e134ea4447ee31a16d25ca1b0735150b4.png",
+    "sha256": "5884424fd72167e5c2dfa04c8782924e134ea4447ee31a16d25ca1b0735150b4",
+    "bytes": 153611
+  },
+  {
+    "path": "evidence/5cf97c832c2d27430549701d98dc7dccc174136a3ca88d830c0a1aca1270e8ae.png",
+    "sha256": "5cf97c832c2d27430549701d98dc7dccc174136a3ca88d830c0a1aca1270e8ae",
+    "bytes": 133227
+  },
+  {
+    "path": "evidence/66a683f2c8ad866ccb5ce2ca1bff35cf1bef48cc3a378e08f643670edbfc914f.png",
+    "sha256": "66a683f2c8ad866ccb5ce2ca1bff35cf1bef48cc3a378e08f643670edbfc914f",
+    "bytes": 199492
+  },
+  {
+    "path": "evidence/6df323e10d09bfe2cb5a67014ce033043132709b310a0c014c395d589ea0b8dd.png",
+    "sha256": "6df323e10d09bfe2cb5a67014ce033043132709b310a0c014c395d589ea0b8dd",
+    "bytes": 63986
+  },
+  {
+    "path": "evidence/91501e0c4cd1657693db2ec051cf229da580a4e7fd18d9e792f3844b82ff1551.png",
+    "sha256": "91501e0c4cd1657693db2ec051cf229da580a4e7fd18d9e792f3844b82ff1551",
+    "bytes": 78296
+  },
+  {
+    "path": "evidence/a2e3dfe3edb902511f9cf214bc62df3441d8ca4272100550d326d02af30e6639.png",
+    "sha256": "a2e3dfe3edb902511f9cf214bc62df3441d8ca4272100550d326d02af30e6639",
+    "bytes": 62408
+  },
+  {
+    "path": "evidence/a3854ae9105eac838371ab95bb9b321fc2bc64a946e0c66853f5f728fa6e3cc0.png",
+    "sha256": "a3854ae9105eac838371ab95bb9b321fc2bc64a946e0c66853f5f728fa6e3cc0",
+    "bytes": 64047
+  },
+  {
+    "path": "evidence/c6d092a9948b86930b347fd6cccd9a08d65a79631ab8e3ffb49f034a62543601.png",
+    "sha256": "c6d092a9948b86930b347fd6cccd9a08d65a79631ab8e3ffb49f034a62543601",
+    "bytes": 54060
+  },
+  {
+    "path": "evidence/c9b850ff2a038812ea53d782abf2b29d1c83551dab7de174633fa402cb96abc5.png",
+    "sha256": "c9b850ff2a038812ea53d782abf2b29d1c83551dab7de174633fa402cb96abc5",
+    "bytes": 78244
+  },
+  {
+    "path": "evidence/dcafb3d200bd9d50554122d0e297143f9091b7b087631baa345a611b8ef905b1.mp4",
+    "sha256": "dcafb3d200bd9d50554122d0e297143f9091b7b087631baa345a611b8ef905b1",
+    "bytes": 782169
+  },
+  {
+    "path": "evidence/effa482efc12932139ebe3caabd9bf4cb61c62902fe8c14d7be73b2611cc6d8a.png",
+    "sha256": "effa482efc12932139ebe3caabd9bf4cb61c62902fe8c14d7be73b2611cc6d8a",
+    "bytes": 66942
+  },
+  {
+    "path": "evidence/f8b5137393002174e2f756423cc404c2e138d6171e121b9108428e352e10f060.png",
+    "sha256": "f8b5137393002174e2f756423cc404c2e138d6171e121b9108428e352e10f060",
+    "bytes": 50261
+  },
+  {
+    "path": "integration.json",
+    "sha256": "8b2996f68a4127ac0580dfaec81c05aca029216d4da1bc6201f4d35b3f274248",
+    "bytes": 898
+  },
+  {
+    "path": "review-data.js",
+    "sha256": "4005d7ba2e9a01e200897324e11072b00d0fde8ed85d34c9537a2c5ba16488b5",
+    "bytes": 132454
+  },
+  {
+    "path": "review.json",
+    "sha256": "9a6d2e69f0505b52c5eb50d0a7014783f83207c4bde98a0d9edcea63b250586b",
+    "bytes": 192245
+  },
+  {
+    "path": "source/after/TrailNotes.swift",
+    "sha256": "5382fd2efefb0f89469e26b685103ec611cbb3d94f010fc886ecf20875187433",
+    "bytes": 5440
+  },
+  {
+    "path": "source/before/TrailNotes.swift",
+    "sha256": "2bf76b986bf8f3dfcdb28165d3d39989e993827721a53f141b2780a20199007f",
+    "bytes": 5385
+  },
+  {
+    "path": "source-identities.json",
+    "sha256": "60c412e873c84665993835e27c870715b2b88d02c1028f1c788b2cc23bfe5e63",
+    "bytes": 1798
+  },
+  {
+    "path": "transitions-with-end-inspection.json",
+    "sha256": "b1982f3619bcae356409b50f6446bd445d0d97cd3ad21dabe687ebb3271a3505",
+    "bytes": 5275
+  }
+]

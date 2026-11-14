@@ -90,9 +90,10 @@ struct ItineraryView: View {
                 Label("6 hours", systemImage: "clock")
             }.font(.subheadline)
             Divider()
-            // SEEDED DEMONSTRATION DEFECT: fixed width + one line hides map coverage.
+            // Coverage is essential information; wrap it at the actual card width.
             Text("Offline maps include the full trail and emergency exit routes")
-                .font(.body).lineLimit(1).frame(width: 170, alignment: .leading)
+                .font(.body).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             Text("Start at North Trailhead · 07:30").font(.subheadline)
             Label("Pack water and a warm layer", systemImage: "backpack")
                 .foregroundStyle(.secondary)

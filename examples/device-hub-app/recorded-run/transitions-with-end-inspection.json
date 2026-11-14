@@ -1,0 +1,129 @@
+{
+  "kind": "actual-image-inspection-notes",
+  "delivery": "functions.read image attachments in visual-device session; no core receipts yet",
+  "reviewer": {
+    "provider": "magpie",
+    "model": "codex/gpt-6.1-sol"
+  },
+  "observations": [
+    {
+      "path": "phone-download/frame-start.png",
+      "assetId": "frame-start",
+      "verdict": "pass",
+      "visibleText": [
+        "No itinerary yet",
+        "Load itinerary"
+      ],
+      "comment": "Starting empty state is visible, before the real Load itinerary tap.",
+      "sha256": "c6d092a9948b86930b347fd6cccd9a08d65a79631ab8e3ffb49f034a62543601"
+    },
+    {
+      "path": "phone-download/frame-1.png",
+      "assetId": "frame-1",
+      "verdict": "pass",
+      "visibleText": [
+        "Preparing your route",
+        "Downloading trail details and offline maps\u2026",
+        "Keep this screen open."
+      ],
+      "comment": "Loading state is visible; progress track is empty or close to zero.",
+      "sha256": "53e2b8a603c2e80a98db22db72f5da46ba34d95c4d29758a8ce27632e573f9f4"
+    },
+    {
+      "path": "phone-download/frame-2.png",
+      "assetId": "frame-2",
+      "verdict": "pass",
+      "visibleText": [
+        "Preparing your route",
+        "Downloading trail details and offline maps\u2026",
+        "Keep this screen open."
+      ],
+      "comment": "Loading state persists and the teal progress fill is visibly advanced from frame-1.",
+      "sha256": "5884424fd72167e5c2dfa04c8782924e134ea4447ee31a16d25ca1b0735150b4"
+    },
+    {
+      "path": "phone-download/frame-3.png",
+      "assetId": "frame-3",
+      "verdict": "pass",
+      "visibleText": [
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Offline maps include the full trail and emergency exit routes"
+      ],
+      "comment": "Ready state is visible after loading. Coverage is fully readable, wrapped on phone and on one line on tablet; no outgoing loading text remains in this final sequence.",
+      "sha256": "66a683f2c8ad866ccb5ce2ca1bff35cf1bef48cc3a378e08f643670edbfc914f"
+    },
+    {
+      "path": "phone-download/frame-end.png",
+      "assetId": "frame-end",
+      "verdict": "pass",
+      "visibleText": [
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Offline maps include the full trail and emergency exit routes"
+      ],
+      "comment": "Ready state is visible after loading. Coverage is fully readable, wrapped on phone and on one line on tablet; no outgoing loading text remains in this final sequence.",
+      "sha256": "6df323e10d09bfe2cb5a67014ce033043132709b310a0c014c395d589ea0b8dd"
+    },
+    {
+      "path": "tablet-download/frame-start.png",
+      "assetId": "frame-start",
+      "verdict": "pass",
+      "visibleText": [
+        "No itinerary yet",
+        "Load itinerary"
+      ],
+      "comment": "Starting empty state is visible, before the real Load itinerary tap.",
+      "sha256": "42ff56bcaf4e4f8dc89aec3d832bc6f35336dc2580a0945c208844782f390da1"
+    },
+    {
+      "path": "tablet-download/frame-1.png",
+      "assetId": "frame-1",
+      "verdict": "pass",
+      "visibleText": [
+        "Preparing your route",
+        "Downloading trail details and offline maps\u2026",
+        "Keep this screen open."
+      ],
+      "comment": "Loading state is visible; progress track is empty or close to zero.",
+      "sha256": "5cf97c832c2d27430549701d98dc7dccc174136a3ca88d830c0a1aca1270e8ae"
+    },
+    {
+      "path": "tablet-download/frame-2.png",
+      "assetId": "frame-2",
+      "verdict": "pass",
+      "visibleText": [
+        "Preparing your route",
+        "Downloading trail details and offline maps\u2026",
+        "Keep this screen open."
+      ],
+      "comment": "Loading state persists and the teal progress fill is visibly advanced from frame-1.",
+      "sha256": "40d02300a6b95ff0e25b92368891e8b65da480e9a853cbb302b514546b1abc55"
+    },
+    {
+      "path": "tablet-download/frame-3.png",
+      "assetId": "frame-3",
+      "verdict": "pass",
+      "visibleText": [
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Offline maps include the full trail and emergency exit routes"
+      ],
+      "comment": "Ready state is visible after loading. Coverage is fully readable, wrapped on phone and on one line on tablet; no outgoing loading text remains in this final sequence.",
+      "sha256": "343a2878046e3327bd8a3a8ae2128504450a78748079a4d27b3cf82c00f5cb90"
+    },
+    {
+      "path": "tablet-download/frame-end.png",
+      "assetId": "frame-end",
+      "verdict": "pass",
+      "visibleText": [
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Offline maps include the full trail and emergency exit routes"
+      ],
+      "comment": "Ready state is visible after loading. Coverage is fully readable, wrapped on phone and on one line on tablet; no outgoing loading text remains in this final sequence.",
+      "sha256": "91501e0c4cd1657693db2ec051cf229da580a4e7fd18d9e792f3844b82ff1551"
+    }
+  ],
+  "limitation": "All ten representative images were actually opened through functions.read. Sparse images establish observed state changes only. The retained original video has not been watched end-to-end; no animation smoothness/performance verdict is made."
+}

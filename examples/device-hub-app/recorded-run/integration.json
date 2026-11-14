@@ -1,0 +1,23 @@
+{
+  "coreHead": "f13d763bd2f42e048b4cd8aacc5cae385ff2c99e",
+  "api": "EvidenceStore from scripts/lib/store.mjs and cellIdFor from scripts/lib/contracts.mjs",
+  "readOnlyCoreUse": true,
+  "storeRelativeToSample": "artifacts/core-store",
+  "reviewer": {
+    "provider": "magpie",
+    "model": "codex/gpt-6.1-sol"
+  },
+  "delivery": "Core provideImage -> exact returned bytes written in own artifacts -> functions.read real image attachments -> recordAI later",
+  "summary": {
+    "total": 8,
+    "aiPass": 8,
+    "finalAIPass": true,
+    "humanPass": 0
+  },
+  "receiptCount": 28,
+  "moduleSha256": {
+    "scripts/lib/store.mjs": "950d12fa7e0ff5b9b18d8c6f0544aa99ab86038b72608124d96af514389d1fad",
+    "scripts/lib/contracts.mjs": "b02100f65bc3c6b6f38d4186a761ea5ee88e0ff9bda7217a994b471cfa86f870",
+    "scripts/lib/media.mjs": "cb88ca3bb1295ca4139e5255bd339b851759b18fb8fc08a520613ca99d494c8e"
+  }
+}
