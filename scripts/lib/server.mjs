@@ -49,13 +49,13 @@ export async function startReviewServer(store, { port = 0, reviewDir = defaultRe
       if (req.method === 'PUT' && path === '/api/drafts') {
         const input = await body(req);
         await store.transaction(async current => {
-          const spec = await store.record('specs', current.specRev), captures = await store.records(current,'captures');
-          // Empty drafts are valid; use the same identity checks as submitted edits otherwise.
+          // Empty drafts are valid; use the same historical identity checks as submitted edits otherwise.
           check(input.schemaVersion === 1 && input.projectId === projectId && input.sourceId === sourceId && Array.isArray(input.edits), 'Draft source/project mismatch');
+          const context = await store.feedbackContext(current, input.edits);
           if (input.edits.length) {
             // Drafts can be incomplete while a person types; final submission enforces comments.
             for (const edit of input.edits) check(['pass','question','fail'].includes(edit.verdict), 'Invalid draft verdict');
-            validateFeedback({ ...input,batchId:'draft',submittedAt:new Date().toISOString(),edits:input.edits.map(e=>({...e,verdict:'pass'})) }, { projectId,sourceId,spec,captureById:new Map(captures.map(c=>[c.id,c])) });
+            validateFeedback({ ...input,batchId:'draft',submittedAt:new Date().toISOString(),edits:input.edits.map(e=>({...e,verdict:'pass'})) }, { ...context, sourceId });
           }
           const saved = { ...input,savedAt:new Date().toISOString() }, temp = join(store.root,`.draft-${randomBytes(6).toString('hex')}.tmp`);
           await writeFile(temp,JSON.stringify(saved),{mode:0o600}); await rename(temp,join(store.root,'drafts.json'));
@@ -63,10 +63,15 @@ export async function startReviewServer(store, { port = 0, reviewDir = defaultRe
         }).then(saved => json(res,200,saved)); return;
       }
       if (req.method === 'POST' && path === '/api/feedback') {
-        const input = await body(req), result = await store.importFeedback(input,{ sourceId,transport:'loopback-browser' });
-        // Callback is retried for exact duplicate batches; extension owns model-message dedup.
-        if (onFeedback) await onFeedback(input,result);
-        return json(res,200,result);
+        const input = await body(req), result = await store.importFeedback(input,{ sourceId,transport:'loopback-browser',allowPersistedRetry:true });
+        // Fresh Origin/token authenticate the connection, while an exact accepted retry retains
+        // its original source identity across server restarts. Human history is never rebound.
+        try {
+          const delivery = onFeedback ? await onFeedback(input,result) : undefined;
+          return json(res,200,{...result,dispatch:delivery?.state ?? (onFeedback ? 'requested' : 'not-connected')});
+        } catch (error) {
+          return json(res,503,{...result,dispatch:'pending',error:`Feedback saved; dispatch pending: ${error.message}. Retry the original batch unchanged using a fresh session token if needed.`});
+        }
       }
       if (req.method === 'GET' && /^\/evidence\/[a-f0-9]{64}\.(png|jpg|mp4|webm)$/.test(path)) {
         const current = await store.state(), captures = await store.records(current,'captures');

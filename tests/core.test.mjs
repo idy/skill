@@ -77,18 +77,21 @@ test('transitions need real actions, start/end identities, ordered frames and pe
   const unreachable=f.capture('transition-unreachable',2);unreachable.status='blocked';unreachable.assets=[];unreachable.assertions=[];unreachable.blockers=['Starting state was unreachable; collection stopped before a transition began'];
   const missing=await f.store.addCapture(unreachable);assert.equal(missing.status,'blocked');assert.equal(missing.transition,undefined);
   input.transition={fromStateId:'empty',toStateId:'filled',startedAt:timestamp,endedAt:'2026-01-01T00:00:01.000Z'};
-  const blocked=await f.store.addCapture(input);assert.equal(blocked.status,'blocked');assert.match(blocked.blockers.join(),/time-ordered/);
+  const blocked=await f.store.addCapture(input);assert.equal(blocked.status,'blocked');assert.match(blocked.blockers.join(),/start, intermediate and end/);
   const image2=join(f.dir,'frame2.png'),png=new PNG({width:2,height:2});png.data.fill(0);await writeFile(image2,PNG.sync.write(png));
-  input.id='transition-sequence';input.assets=[{...input.assets[0],kind:'frame',offsetMs:0},{...input.assets[0],id:'image-2',kind:'frame',path:image2,offsetMs:500,capturedAt:'2026-01-01T00:00:00.500Z'}];
-  const cap=await f.store.addCapture(input);assert.equal(cap.status,'captured');assert.match(cap.limitations.join(),/smoothness is not measured/);
+  input.id='transition-sequence';input.assets=[{...input.assets[0],kind:'frame',offsetMs:0},{...input.assets[0],id:'image-2',kind:'frame',path:image2,offsetMs:500,capturedAt:'2026-01-01T00:00:00.500Z'},{...input.assets[0],id:'image-3',kind:'frame',path:image2,offsetMs:1000,capturedAt:'2026-01-01T00:00:01.000Z'}];
+  Object.assign(input.transition,{triggerActionIndex:0,startEvidenceAssetId:'image-1',endEvidenceAssetId:'image-3'});
+  input.assertions.push({description:'Synthetic start state',result:'pass',basis:'visual',stateId:'empty',evidenceAssetIds:['image-1']},{description:'Synthetic end state',result:'pass',basis:'visual',stateId:'filled',evidenceAssetIds:['image-3']});
+  const cap=await f.store.addCapture(input);assert.equal(cap.status,'captured');assert.match(cap.limitations.join(),/cannot establish continuous smoothness/);
   const first=await f.store.provideImage({cellId:cap.cellId,assetId:'image-1',...f.imageOptions});await assert.rejects(f.store.recordAI(f.review(cap,[first.receipt]),f.imageOptions),/image-2.*not supplied/);
-  const second=await f.store.provideImage({cellId:cap.cellId,assetId:'image-2',...f.imageOptions});await f.store.recordAI(f.review(cap,[first.receipt,second.receipt]),f.imageOptions);
+  const second=await f.store.provideImage({cellId:cap.cellId,assetId:'image-2',...f.imageOptions});const third=await f.store.provideImage({cellId:cap.cellId,assetId:'image-3',...f.imageOptions});await f.store.recordAI(f.review(cap,[first.receipt,second.receipt,third.receipt]),f.imageOptions);
 });
 
 test('feedback exact batch retries deduplicate; project/source/cell/version conflicts reject',async t=>{
   const f=await fixture(t),cap=await f.store.addCapture(f.capture()),batch=f.batch(cap);
   assert.equal((await f.store.importFeedback(batch)).duplicate,false);assert.equal((await f.store.importFeedback(batch)).duplicate,true);
-  await assert.rejects(f.store.importFeedback({...batch,sourceId:'bad'},{sourceId:'expected'}),/source mismatch/);
+  await assert.rejects(f.store.importFeedback({...batch,sourceId:'bad'},{sourceId:'expected'}),/conflict/);
+  await assert.rejects(f.store.importFeedback({...batch,batchId:'new-batch',sourceId:'bad'},{sourceId:'expected'}),/source mismatch/);
   await assert.rejects(f.store.importFeedback({...batch,projectId:'other'}),/project mismatch/);
   const changed=structuredClone(batch);changed.edits[0].comment='changed';await assert.rejects(f.store.importFeedback(changed),/conflict/);
   changed.batchId='batch-2';changed.edits[0].buildId='wrong';await assert.rejects(f.store.importFeedback(changed),/buildId mismatch/);

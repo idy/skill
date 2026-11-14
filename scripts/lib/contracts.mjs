@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export const SCHEMA_VERSION = 1;
+export const AI_REVIEW_PROTOCOL = 'visual-acceptance-2';
 export const DEFAULT_POLICY = Object.freeze({ revision: 'policy-1', maxRepairRounds: 2, captureRetries: 1, maxMinutes: 30, maxImages: 80 });
 export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 export const canonical = value => JSON.stringify(sort(value));
@@ -50,7 +51,7 @@ export function validateProject(input) {
   check(spec.cells.length > 0, 'Spec needs cells');
   return { schemaVersion: 1, project: structuredClone(input.project), spec, policy: policy(input.policy) };
 }
-export function validateFeedback(batch, { projectId, sourceId, spec, captureById }) {
+export function validateFeedback(batch, { projectId, sourceId, specByRev, captureById }) {
   object(batch, 'feedback'); check(batch.schemaVersion === 1, 'Unsupported feedback schemaVersion');
   id(batch.batchId, 'batchId'); id(batch.sourceId, 'sourceId'); check(batch.projectId === projectId, 'Feedback project mismatch');
   if (sourceId) check(batch.sourceId === sourceId, 'Feedback source mismatch');
@@ -58,7 +59,9 @@ export function validateFeedback(batch, { projectId, sourceId, spec, captureById
   check(list(batch.edits, 'edits').length > 0 && batch.edits.length <= 1000, 'Batch needs 1..1000 edits');
   const seen = new Set();
   for (const edit of batch.edits) {
-    id(edit.cellId, 'cellId'); check(spec.cells.some(c => c.id === edit.cellId), 'Unknown feedback cell');
+    id(edit.cellId, 'cellId'); id(edit.specRev, 'specRev');
+    const referencedSpec = specByRev.get(edit.specRev);
+    check(referencedSpec?.cells.some(c => c.id === edit.cellId), 'Unknown feedback cell in referenced spec');
     check(!seen.has(edit.cellId), 'Duplicate cell in feedback batch'); seen.add(edit.cellId);
     choice(edit.verdict, ['pass','question','fail'], 'verdict'); text(edit.comment, 'comment', edit.verdict === 'pass'); text(edit.reviewer, 'reviewer'); id(edit.specRev, 'specRev');
     if (edit.captureId === null) { check(edit.buildId === null && edit.runtimeId === null, 'Missing evidence must have null build/runtime'); }
@@ -74,6 +77,7 @@ export function staleReasons(record, capture, target, policyRev, isAI = false) {
   if (!capture || record.captureId !== capture.id) reasons.push('capture changed or missing');
   for (const key of ['buildId','runtimeId','specRev']) if (record[key] !== target?.[key]) reasons.push(`${key} changed`);
   if (isAI && record.policyRev !== policyRev) reasons.push('review policy changed');
+  if (isAI && record.reviewProtocol !== AI_REVIEW_PROTOCOL) reasons.push('image review protocol changed; inspect images again');
   if (capture && record.imageSetHash && record.imageSetHash !== imageSetHash(capture)) reasons.push('image set changed');
   return reasons;
 }

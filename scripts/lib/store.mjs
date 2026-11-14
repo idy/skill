@@ -5,8 +5,9 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { check, object, text, id, list, choice, time, canonical, sha256, identity, validateProject, validateFeedback, staleReasons, imageSetHash } from './contracts.mjs';
+import { AI_REVIEW_PROTOCOL, check, object, text, id, list, choice, time, canonical, sha256, identity, validateProject, validateFeedback, staleReasons, imageSetHash } from './contracts.mjs';
 import { decodeImage, hashArtifact } from './media.mjs';
+import { transitionFindings } from './transitions.mjs';
 const exec = promisify(execFile);
 const now = () => new Date().toISOString();
 const readJSON = async p => JSON.parse(await readFile(p, 'utf8'));
@@ -183,17 +184,8 @@ export class EvidenceStore {
       if (value.assertions.some(a => a.result !== 'pass')) value.blockers.push('Capture assertions failed or unknown');
       if (!value.assertions.some(a => a.result === 'pass' && a.basis === 'visual' && a.evidenceAssetIds.length)) value.blockers.push('No visual assertion; API/mount success cannot establish a visible state');
       const row = spec.states.find(s => s.id === cell.stateId);
-      if (row.kind === 'transition' && !value.transition) value.blockers.push('Transition metadata missing or state unreachable; cannot verify start/end or temporal evidence');
-      if (row.kind === 'transition' && value.transition) {
-        const t = value.transition;
-        check(t?.fromStateId === row.fromStateId && t?.toStateId === row.toStateId, 'Transition start/end state mismatch');
-        time(t.startedAt, 'transition.startedAt'); time(t.endedAt, 'transition.endedAt'); check(Date.parse(t.endedAt) > Date.parse(t.startedAt), 'Transition end must follow start');
-        const frames = value.assets.filter(a => a.kind === 'frame');
-        const ordered = frames.length >= 2 && frames[0].offsetMs === 0 && frames.every((a,i) => Number.isFinite(a.offsetMs) && a.offsetMs >= 0 && (i === 0 || a.offsetMs > frames[i-1].offsetMs) && (i === 0 || Date.parse(a.capturedAt) > Date.parse(frames[i-1].capturedAt)));
-        if (!ordered || value.actions.length === 0) value.blockers.push('Transition requires real actions and 2+ time-ordered representative frames starting at offset 0; static endpoint cannot prove motion');
-        if (frames.some(a => Date.parse(a.capturedAt) < Date.parse(t.startedAt) || Date.parse(a.capturedAt) > Date.parse(t.endedAt) || a.offsetMs > Date.parse(t.endedAt) - Date.parse(t.startedAt))) value.blockers.push('Transition frames fall outside declared interval');
-        if (!value.assets.some(a => a.kind === 'video')) value.limitations.push('Frame sequence only; smoothness is not measured and must not be inferred from sparse samples');
-      }
+      const temporal = transitionFindings(value, row);
+      value.blockers.push(...temporal.blockers); value.limitations.push(...temporal.limitations);
       const captures = await this.records(state, 'captures');
       for (const other of captures) {
         const otherCell = spec.cells.find(c => c.id === other.cellId);
@@ -221,6 +213,7 @@ export class EvidenceStore {
       const reasons = capture ? staleReasons({ ...capture, captureId: capture.id }, capture, state.target, state.policy.revision) : [];
       if (capture?.specRev !== state.specRev && capture) reasons.push('spec revision changed');
       const blockers = [...(capture?.blockers ?? [])];
+      if (capture) blockers.push(...transitionFindings(capture, spec.states.find(s => s.id === cell.stateId)).blockers);
       if (capture) for (const asset of capture.assets) try { await this.verifyAsset(asset); } catch (e) { blockers.push(`${asset.id}: ${e.message}`); }
       const aiReviews = reviews.filter(r => r.cellId === cell.id).map(r => {
         const stale = staleReasons(r, capture, state.target, state.policy.revision, true);
@@ -237,19 +230,40 @@ export class EvidenceStore {
       cells.push({ ...cell, status, staleReasons: [...new Set(reasons)], blockers, capture, captures: history, aiReviews, humanReviews, currentAIReview, currentHumanReview });
     }
     const builds = await this.records(state, 'builds'), runtimes = await this.records(state, 'runtimes'), sources = await this.records(state, 'sources');
-    return { schemaVersion: 1, project: state.project, spec, target: state.target, policy: state.policy, generatedAt: now(), cells,
+    return { schemaVersion: 1, reviewProtocol: AI_REVIEW_PROTOCOL, project: state.project, spec, target: state.target, policy: state.policy, generatedAt: now(), cells,
       sources: sources.map(s => ({ id: s.id, head: s.head, dirty: s.dirty, dirtyDiffSha256: s.dirtyDiffSha256, relatedInputCount: s.related.length, relatedInputsSha256: sha256(canonical(s.related)) })),
       builds: builds.map(b => ({ ...b, artifact: { sha256: b.artifact.sha256, bytes: b.artifact.bytes, kind: b.artifact.kind } })), runtimes,
+      historicalHumanReviews: batches.flatMap(b => b.edits.map((e, i) => ({ ...e, id: `${b.batchId}:${i}`, batchId: b.batchId, sourceId: b.sourceId, transport: b.transport, createdAt: b.submittedAt, stale: true, staleReasons: ['Cell removed from current spec'] }))).filter(e => !spec.cells.some(c => c.id === e.cellId)),
       summary: { total: cells.length, aiPass: cells.filter(c => c.status === 'pass').length, finalAIPass: cells.length > 0 && cells.every(c => c.status === 'pass'), humanPass: cells.filter(c => c.currentHumanReview?.verdict === 'pass').length },
       storage: { mode: 'local-single-reviewer', drafts: 'browser-local and server when available', collaboration: false } };
   }
-  async importFeedback(input, { sourceId, transport = 'json-import' } = {}) {
+  async feedbackContext(state, edits) {
+    check(list(edits, 'edits').length <= 1000, 'Feedback supports at most 1000 edits');
+    const specByRev = new Map();
+    for (const edit of edits) {
+      id(edit.specRev, 'specRev');
+      if (!specByRev.has(edit.specRev)) {
+        try { specByRev.set(edit.specRev, await this.record('specs', edit.specRev)); }
+        catch (error) { if (error.code === 'ENOENT') throw new Error(`Unknown feedback spec revision: ${edit.specRev}`); throw error; }
+      }
+    }
+    return { projectId: state.project.id, specByRev, captureById: new Map((await this.records(state, 'captures')).map(c => [c.id, c])) };
+  }
+  async importFeedback(input, { sourceId, transport = 'json-import', allowPersistedRetry = false } = {}) {
     return this.transaction(async state => {
-      const spec = await this.record('specs', state.specRev), captures = await this.records(state, 'captures');
-      const batch = validateFeedback(input, { projectId: state.project.id, sourceId, spec, captureById: new Map(captures.map(c => [c.id,c])) });
+      object(input, 'feedback');
+      const context = await this.feedbackContext(state, input.edits);
+      // Validate original identities first. A fresh connection can retry an EXACT previously
+      // accepted batch with its old source; it cannot use that exception for a new/changed batch.
+      const batch = validateFeedback(input, context);
       const existing = (await this.records(state, 'feedback')).find(b => b.batchId === batch.batchId);
-      if (existing) { const { id: _, transport: __, receivedAt: ___, ...original } = existing; check(canonical(original) === canonical(batch), 'Batch ID conflict: content changed'); return { value: { accepted: true, duplicate: true, batchId: batch.batchId } }; }
-      for (const edit of batch.edits) await this.record('specs', edit.specRev); // old known spec accepted, not rebound
+      if (existing) {
+        const { id: _, transport: __, receivedAt: ___, ...original } = existing;
+        check(canonical(original) === canonical(batch), 'Batch ID conflict: content changed');
+        if (sourceId && !allowPersistedRetry) check(batch.sourceId === sourceId, 'Feedback source mismatch');
+        return { value: { accepted: true, duplicate: true, batchId: batch.batchId } };
+      }
+      if (sourceId) check(batch.sourceId === sourceId, 'Feedback source mismatch');
       const record = { ...batch, id: batch.batchId, transport, receivedAt: now() };
       await this.immutable('feedback', record); state.feedback.push(record.id);
       return { state, value: { accepted: true, duplicate: false, batchId: batch.batchId } };
@@ -267,7 +281,9 @@ export class EvidenceStore {
     const start = await this.record('runs', state.activeRunId);
     const names = await readdir(join(this.root, 'runEvents')).catch(e => { if (e.code === 'ENOENT') return []; throw e; });
     const events = (await Promise.all(names.map(n => readJSON(join(this.root,'runEvents',n))))).filter(e => e.runId === start.id).sort((a,b) => a.sequence - b.sequence);
-    return { ...start, events, status: events.some(e => ['stop','finish'].includes(e.type)) ? 'stopped' : 'active', unresolved: events.filter(e => e.reason).map(e => e.reason) };
+    let round = 0;
+    for (const event of events) { if (event.type === 'repair') round++; event.effectiveRound = round; }
+    return { ...start, events, round, status: events.some(e => ['stop','finish'].includes(e.type)) ? 'stopped' : 'active', unresolved: events.filter(e => e.reason).map(e => e.reason) };
   }
   async budgetEvent(state, input) {
     const run = await this.currentRun(state); check(run.status === 'active', `Run stopped: ${run.unresolved.join('; ') || 'completed'}`);
@@ -280,15 +296,15 @@ export class EvidenceStore {
     const spec = await this.record('specs', state.specRev), known = new Set(spec.cells.map(c => c.id));
     if (input.type === 'capture_attempt') {
       id(input.cellId, 'cellId'); check(known.has(input.cellId), 'Unknown budget cell');
-      check(Number.isSafeInteger(input.round ?? 0) && (input.round ?? 0) >= 0, 'Capture round must be a nonnegative integer');
-      if (run.events.filter(e => e.type === 'capture_attempt' && e.cellId === input.cellId && (e.round ?? 0) === (input.round ?? 0)).length > run.policy.captureRetries) reason = `Capture retry limit reached for ${input.cellId}, round ${input.round ?? 0}`;
+      check(input.round === undefined || input.round === run.round, `Capture round is derived from persisted repairs: expected ${run.round}`);
+      if (run.events.filter(e => e.type === 'capture_attempt' && e.cellId === input.cellId && e.effectiveRound === run.round).length > run.policy.captureRetries) reason = `Capture retry limit reached for ${input.cellId}, round ${run.round}`;
     }
     if (input.type === 'repair') {
       text(input.reason, 'repair root cause'); check(list(input.affectedCellIds, 'affectedCellIds').length > 0 && list(input.regressionCellIds, 'regressionCellIds').length > 0, 'Repair requires affected + regression coverage');
       for (const cellId of [...input.affectedCellIds, ...input.regressionCellIds]) check(known.has(cellId), 'Unknown affected/regression cell');
     }
     if (['stop','finish'].includes(input.type)) text(input.reason, 'concrete unresolved/completion reason');
-    const event = { ...input, id: `event-${randomUUID()}`, runId: run.id, sequence: run.events.length, createdAt: now(), ...(reason ? { type: 'stop', reason } : {}) };
+    const event = { ...input, round: input.type === 'repair' && !reason ? run.round + 1 : run.round, id: `event-${randomUUID()}`, runId: run.id, sequence: run.events.length, createdAt: now(), ...(reason ? { type: 'stop', reason } : {}) };
     await this.immutable('runEvents', event);
     return { event, exhausted: !!reason };
   }
@@ -307,7 +323,7 @@ export class EvidenceStore {
       check(latest?.id === capture.id && canonical(state.target) === canonical(data.target) && state.policy.revision === data.policy.revision && state.specRev === capture.specRev, 'Target changed during image delivery');
       const budget = await this.budgetEvent(state, { type: 'image', cellId, captureId: capture.id, assetId: asset.id });
       check(!budget.exhausted, budget.event.reason);
-      const record = { id: `receipt-${randomUUID()}`, sessionId, reviewer, cellId, captureId: capture.id, assetId: asset.id, sha256: asset.sha256, buildId: capture.buildId, runtimeId: capture.runtimeId, specRev: capture.specRev, policyRev: state.policy.revision, imageSetHash: imageSetHash(capture), createdAt: now() };
+      const record = { id: `receipt-${randomUUID()}`, sessionId, reviewer, cellId, captureId: capture.id, assetId: asset.id, sha256: asset.sha256, buildId: capture.buildId, runtimeId: capture.runtimeId, specRev: capture.specRev, policyRev: state.policy.revision, reviewProtocol: AI_REVIEW_PROTOCOL, imageSetHash: imageSetHash(capture), createdAt: now() };
       await this.immutable('receipts', record); state.receipts.push(record.id); return { state, value: record };
     });
     return { receipt, asset, bytes, checkpoints: cell.checkpoints };
@@ -323,6 +339,8 @@ export class EvidenceStore {
       check(capture?.id === input.captureId, 'Review capture is no longer current');
       check(capture.status !== 'blocked' && capture.blockers.length === 0, 'Evidence blocked');
       check(staleReasons({ ...capture, captureId: capture.id }, capture, state.target, state.policy.revision).length === 0 && state.specRev === capture.specRev, 'Review target is stale');
+      const spec = await this.record('specs', capture.specRev), cell = spec.cells.find(c => c.id === capture.cellId);
+      check(transitionFindings(capture, spec.states.find(s => s.id === cell?.stateId)).blockers.length === 0, 'Transition evidence is incomplete under current validation; collect and inspect a new capture');
       const run = await this.currentRun(state); check(run.status === 'active', `Run stopped: ${run.unresolved.join('; ') || 'completed'}`);
       if (Date.now() - Date.parse(run.startedAt) >= run.policy.maxMinutes * 60000) {
         const stopped = await this.budgetEvent(state, { type: 'stop', cellId: input.cellId, captureId: input.captureId, reason: 'Time budget reached before recording review' });
@@ -332,11 +350,11 @@ export class EvidenceStore {
       for (const asset of imageAssets(capture)) {
         await this.verifyAsset(asset);
         const receipt = receipts.find(r => r.assetId === asset.id && r.sha256 === asset.sha256);
-        check(receipt && receipt.sessionId === sessionId && receipt.captureId === capture.id && receipt.imageSetHash === imageSetHash(capture) && canonical(receipt.reviewer) === canonical(reviewer) && receipt.policyRev === state.policy.revision, `Image ${asset.id} was not supplied in this session/model/target; call image tool first`);
+        check(receipt && receipt.sessionId === sessionId && receipt.captureId === capture.id && receipt.imageSetHash === imageSetHash(capture) && canonical(receipt.reviewer) === canonical(reviewer) && receipt.policyRev === state.policy.revision && receipt.reviewProtocol === AI_REVIEW_PROTOCOL, `Image ${asset.id} was not supplied in this session/model/target; call image tool first`);
         const observation = input.observations.find(o => o.assetId === asset.id && o.sha256 === asset.sha256); text(observation?.detail, `Detailed observation for ${asset.id}`);
       }
       check(input.observations.length === imageAssets(capture).length && new Set(input.observations.map(o => o.assetId)).size === input.observations.length, 'Observations must cover exactly every image');
-      const record = { ...structuredClone(input), id: `ai-${randomUUID()}`, buildId: capture.buildId, runtimeId: capture.runtimeId, specRev: capture.specRev, policyRev: state.policy.revision, imageSetHash: imageSetHash(capture), reviewer, createdAt: now() };
+      const record = { ...structuredClone(input), id: `ai-${randomUUID()}`, buildId: capture.buildId, runtimeId: capture.runtimeId, specRev: capture.specRev, policyRev: state.policy.revision, reviewProtocol: AI_REVIEW_PROTOCOL, imageSetHash: imageSetHash(capture), reviewer, createdAt: now() };
       await this.immutable('aiReviews', record); state.aiReviews.push(record.id); return { state, value: record };
     });
   }

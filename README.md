@@ -21,7 +21,7 @@ npm test
 npm pack --dry-run
 ```
 
-The core provides immutable captures, actual source/artifact/runtime identities, image decoding and integrity checks, stale review detection, bounded review runs, single-image Pi tools, a loopback review server and deduplicated explicit feedback batches. The matrix and Device Hub adapter are separate package resources. See [shared contracts](docs/contracts.md), [workflow and command guide](docs/workflow.md), [Device Hub guide](docs/device-hub.md) and [schema](schemas/visual-acceptance-v1.schema.json).
+The core provides immutable captures, actual source/artifact/runtime identities, image decoding and integrity checks, stale review detection, bounded review runs, single-image Pi tools, a loopback review server and deduplicated explicit feedback batches. The matrix and Device Hub adapter are separate package resources. See [shared contracts](docs/contracts.md), [workflow and command guide](docs/workflow.md), [core verification](docs/testing.md), [Device Hub guide](docs/device-hub.md) and [schema](schemas/visual-acceptance-v1.schema.json).
 
 App evidence must come from the real installed app on a truthfully labeled device/simulator. Fixtures may control IO while retaining production UI/state machines. Transition evidence includes real actions and ordered frames/video; a static end screenshot cannot establish smoothness. Each new image must be inspected by an image-capable agent. Image receipts record delivery sequencing, not cognition. A new capture/build/runtime/spec/image invalidates prior AI conclusions; human review history stays separate and receives stale warnings.
 
