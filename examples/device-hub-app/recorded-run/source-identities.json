@@ -1,0 +1,18 @@
+[
+  {
+    "id": "source-f1b34412a2d7c871ee16437c1bd8b523",
+    "head": "100f1b1b4b8376b298dc29780d35a3dd3a928d58",
+    "dirty": false,
+    "dirtyDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "relatedInputCount": 0,
+    "relatedInputsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+    "id": "source-0f783d4d85f000ff4ba7713ffe4e4fb4",
+    "head": "100f1b1b4b8376b298dc29780d35a3dd3a928d58",
+    "dirty": true,
+    "dirtyDiffSha256": "048f916aec56aaaa56c103cd01a732261a44136a3b287c9e266dc977c05ed83c",
+    "relatedInputCount": 0,
+    "relatedInputsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+]

@@ -1,0 +1,460 @@
+{
+  "scope": "Two spec-2 collection runs; original stopped run and one explicit recovery after ending the owned orphan session. No repair events or invented round increments.",
+  "runs": [
+    {
+      "run": {
+        "id": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+        "startedAt": "2026-11-14T16:33:18.135Z",
+        "policy": {
+          "revision": "policy-1",
+          "maxRepairRounds": 2,
+          "captureRetries": 1,
+          "maxMinutes": 30,
+          "maxImages": 80
+        },
+        "events": [],
+        "status": "active",
+        "unresolved": []
+      },
+      "events": [
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-6f12c2c91244d003ae3a0185",
+          "round": 0,
+          "id": "event-d5d5adf8-3b53-456c-8e08-e643605dd37d",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 0,
+          "createdAt": "2026-11-14T16:33:36.951Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-932b82de79b13077f775b564",
+          "round": 0,
+          "id": "event-c4e610e6-ae5b-423e-8d59-1f5304a7a52e",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 1,
+          "createdAt": "2026-11-14T16:34:15.791Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-932b82de79b13077f775b564",
+          "round": 0,
+          "id": "event-2ba86f22-15c2-4467-b80e-3053611e28c7",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 2,
+          "createdAt": "2026-11-14T16:35:28.080Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-3e0f89fd96b5530136054501",
+          "round": 0,
+          "id": "event-81e20788-f35d-47aa-b9c9-6318d68b52ed",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 3,
+          "createdAt": "2026-11-14T16:35:32.693Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "round": 0,
+          "id": "event-09de5bc1-b8bb-49ef-afbe-771ef99fa893",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 4,
+          "createdAt": "2026-11-14T16:35:35.784Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-7f2c8ba24a33d61baade8b8d",
+          "round": 0,
+          "id": "event-6b9816bb-73db-47a4-8e75-ad3621b7cacf",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 5,
+          "createdAt": "2026-11-14T16:35:43.436Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-8968de44c1268ec114254cc2",
+          "round": 0,
+          "id": "event-a7c2510d-4d7a-4ab9-9823-c84729fa08f6",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 6,
+          "createdAt": "2026-11-14T16:36:24.619Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "round": 0,
+          "id": "event-96878d4a-31fe-4668-8740-b73f189516f2",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 7,
+          "createdAt": "2026-11-14T16:36:38.248Z"
+        },
+        {
+          "type": "stop",
+          "reason": "External 60-second process timeout interrupted the first native batch and left this worker's own Device Hub session occupied. Its recovered session handle was ended via DeviceInteractionEndSession (Session stopped). Four blocked collection attempts and all budget charges are preserved; no fabricated repair/round is used.",
+          "round": 0,
+          "id": "event-1329ef35-84e2-4ea3-a082-2dd6c226e45e",
+          "runId": "run-b2a6f4ec-5cb3-4901-849e-a28804f2441c",
+          "sequence": 8,
+          "createdAt": "2026-11-14T16:38:13.145Z"
+        }
+      ]
+    },
+    {
+      "run": {
+        "id": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+        "startedAt": "2026-11-14T16:38:13.146Z",
+        "policy": {
+          "revision": "policy-1",
+          "maxRepairRounds": 2,
+          "captureRetries": 1,
+          "maxMinutes": 30,
+          "maxImages": 80
+        },
+        "events": [],
+        "status": "active",
+        "unresolved": []
+      },
+      "events": [
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-932b82de79b13077f775b564",
+          "round": 0,
+          "id": "event-8604eea8-0b47-48e2-9bd1-6c53f5872e0b",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 0,
+          "createdAt": "2026-11-14T16:38:13.557Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-3e0f89fd96b5530136054501",
+          "round": 0,
+          "id": "event-548b6d38-f7f0-4c5d-a2d0-8c2d10d381b6",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 1,
+          "createdAt": "2026-11-14T16:38:22.726Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "round": 0,
+          "id": "event-9b7b2108-e177-4a1e-90c6-f4762ae29a4e",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 2,
+          "createdAt": "2026-11-14T16:38:30.286Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-bd49dc6e7cdb49a48c349ec6",
+          "round": 0,
+          "id": "event-53d1d029-1ce3-454a-a2da-7d1f36b5a429",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 3,
+          "createdAt": "2026-11-14T16:38:52.311Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-8968de44c1268ec114254cc2",
+          "round": 0,
+          "id": "event-d9d4795e-5f2e-4c5a-aef2-42c9f08cf622",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 4,
+          "createdAt": "2026-11-14T16:40:47.089Z"
+        },
+        {
+          "type": "capture_attempt",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "round": 0,
+          "id": "event-08a0ff8d-8ea9-4bed-a089-339dd5aff28f",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 5,
+          "createdAt": "2026-11-14T16:40:59.729Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-8968de44c1268ec114254cc2",
+          "captureId": "after-v2-retry-tablet-error",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-c9968dd8-bdd7-4170-ad07-e719959bf632",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 6,
+          "createdAt": "2026-11-14T16:42:06.061Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-start",
+          "round": 0,
+          "id": "event-dc6b5c57-7e38-41af-9270-0683daaa7958",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 7,
+          "createdAt": "2026-11-14T16:42:06.345Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-1",
+          "round": 0,
+          "id": "event-5fa55a80-b3b0-47df-ad9d-2ac337fc5c33",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 8,
+          "createdAt": "2026-11-14T16:42:06.526Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-8968de44c1268ec114254cc2",
+          "captureId": "after-v2-retry-tablet-error",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-227995bd-4efa-411c-b97b-b7a2c7026a80",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 9,
+          "createdAt": "2026-11-14T16:44:41.342Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-start",
+          "round": 0,
+          "id": "event-a9c118f5-9d88-400a-be8e-8234a0c0bdb8",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 10,
+          "createdAt": "2026-11-14T16:44:41.708Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-1",
+          "round": 0,
+          "id": "event-e7345912-e580-463b-83ec-62bfd05ed9a9",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 11,
+          "createdAt": "2026-11-14T16:44:41.889Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-2",
+          "round": 0,
+          "id": "event-600e87c2-b918-45ff-b695-4474578f84f9",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 12,
+          "createdAt": "2026-11-14T16:44:42.069Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-3",
+          "round": 0,
+          "id": "event-a254cf5f-0913-43fa-a704-0eb474e7ad1c",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 13,
+          "createdAt": "2026-11-14T16:44:42.255Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-retry-tablet-download",
+          "assetId": "frame-end",
+          "round": 0,
+          "id": "event-12db29cd-c312-412b-85ee-669a969403e4",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 14,
+          "createdAt": "2026-11-14T16:44:42.404Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-6f12c2c91244d003ae3a0185",
+          "captureId": "after-v2-phone-empty",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-05dccd0b-22f1-49ea-bc32-3e4a65691992",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 15,
+          "createdAt": "2026-11-14T16:45:18.406Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-932b82de79b13077f775b564",
+          "captureId": "after-v2-recovered-phone-ready",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-651e5095-4682-4b85-b99b-901d29d3679c",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 16,
+          "createdAt": "2026-11-14T16:45:18.905Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-3e0f89fd96b5530136054501",
+          "captureId": "after-v2-recovered-phone-error",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-9c067419-752a-43d5-802a-47ed53276d9d",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 17,
+          "createdAt": "2026-11-14T16:45:19.406Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "captureId": "after-v2-recovered-phone-download",
+          "assetId": "frame-start",
+          "round": 0,
+          "id": "event-cee7d32c-467d-4bbc-88b2-0d29aa0c00f8",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 18,
+          "createdAt": "2026-11-14T16:45:19.905Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "captureId": "after-v2-recovered-phone-download",
+          "assetId": "frame-1",
+          "round": 0,
+          "id": "event-b6c2ddd8-6af4-489d-9d5b-6d2f1d5296fa",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 19,
+          "createdAt": "2026-11-14T16:45:20.197Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "captureId": "after-v2-recovered-phone-download",
+          "assetId": "frame-2",
+          "round": 0,
+          "id": "event-38ea57bc-0520-407c-97ad-b7f90b87d741",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 20,
+          "createdAt": "2026-11-14T16:45:20.515Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "captureId": "after-v2-recovered-phone-download",
+          "assetId": "frame-3",
+          "round": 0,
+          "id": "event-f5fa71eb-58d5-43f9-adc8-16b6c74f182a",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 21,
+          "createdAt": "2026-11-14T16:45:20.793Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-24b31db9e802d2655a7411ab",
+          "captureId": "after-v2-recovered-phone-download",
+          "assetId": "frame-end",
+          "round": 0,
+          "id": "event-3b7275c5-3ff5-4428-a6ce-5ccfad39f9ca",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 22,
+          "createdAt": "2026-11-14T16:45:21.047Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-bd49dc6e7cdb49a48c349ec6",
+          "captureId": "after-v2-final-tablet-empty",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-83ed94f4-770e-41bc-a439-5a7125b4c15f",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 23,
+          "createdAt": "2026-11-14T16:45:21.599Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-7f2c8ba24a33d61baade8b8d",
+          "captureId": "after-v2-retry-tablet-ready",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-f0691655-ecfa-4303-8e72-602045d4c0ec",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 24,
+          "createdAt": "2026-11-14T16:45:22.127Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-8968de44c1268ec114254cc2",
+          "captureId": "after-v2-settled-tablet-error",
+          "assetId": "screen",
+          "round": 0,
+          "id": "event-59888ec8-fc6a-4ee3-83de-7999c1f899ec",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 25,
+          "createdAt": "2026-11-14T16:45:22.665Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-settled-tablet-download",
+          "assetId": "frame-start",
+          "round": 0,
+          "id": "event-d0289220-a982-48f9-a069-36e76751055d",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 26,
+          "createdAt": "2026-11-14T16:45:23.268Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-settled-tablet-download",
+          "assetId": "frame-1",
+          "round": 0,
+          "id": "event-0abd0837-2ba5-4d35-97fc-8346e7c84ae6",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 27,
+          "createdAt": "2026-11-14T16:45:23.555Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-settled-tablet-download",
+          "assetId": "frame-2",
+          "round": 0,
+          "id": "event-52415b8e-a75e-4a34-8bdb-24b6fcc45076",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 28,
+          "createdAt": "2026-11-14T16:45:23.871Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-settled-tablet-download",
+          "assetId": "frame-3",
+          "round": 0,
+          "id": "event-7831be32-1e77-44b1-a8b1-f0db2ac49fc8",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 29,
+          "createdAt": "2026-11-14T16:45:24.166Z"
+        },
+        {
+          "type": "image",
+          "cellId": "cell-d62a00ee18a37f7201e8410d",
+          "captureId": "after-v2-settled-tablet-download",
+          "assetId": "frame-end",
+          "round": 0,
+          "id": "event-df53db5b-8976-4344-aa6c-348cf6f8a83c",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 30,
+          "createdAt": "2026-11-14T16:45:24.482Z"
+        },
+        {
+          "type": "finish",
+          "reason": "Recovered collection completed with original App build: 8 current protocol-2 AI reviews after actual image delivery/inspection. Four blocked attempts and two superseded transient questions remain historical. No human review or measured smoothness claim.",
+          "round": 0,
+          "id": "event-a6112f21-1236-40f3-b11b-2e3bdef2e54a",
+          "runId": "run-d66052f3-5e17-475e-9c84-48a178c8733d",
+          "sequence": 31,
+          "createdAt": "2026-11-14T16:49:20.360Z"
+        }
+      ]
+    }
+  ]
+}

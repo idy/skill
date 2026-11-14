@@ -1,0 +1,5 @@
+node_modules/
+.visual-acceptance/
+*.tgz
+.DS_Store
+coverage/

@@ -1,0 +1,29 @@
+{
+  "coreHead": "da13ee7aa531572834b2d848304b6a38d1955f3d",
+  "api": "EvidenceStore and cellIdFor; transitionFindings validated against this exact core",
+  "readOnlyCoreUse": true,
+  "storeRelativeToSample": "artifacts/core-store",
+  "reviewProtocol": "visual-acceptance-2",
+  "reviewer": {
+    "provider": "magpie",
+    "model": "codex/gpt-6.1-sol"
+  },
+  "delivery": "Core provideImage -> exact returned bytes written in own artifacts -> actual functions.read image attachments -> later recordAI. All 16 current images and 6 question-history images were actually redelivered/inspected. Three interrupted, unused new-protocol receipts remain private history and were never used to claim an inspection.",
+  "summary": {
+    "total": 8,
+    "aiPass": 8,
+    "finalAIPass": true,
+    "humanPass": 0
+  },
+  "receiptCount": 53,
+  "protocol2ReceiptCount": 25,
+  "protocol2ReceiptsUsedAfterActualRead": 22,
+  "moduleSha256": {
+    "scripts/lib/store.mjs": "2f40d133902d0ec33bfa329569106a5b53066bf254d2d547032ef5f635a570da",
+    "scripts/lib/contracts.mjs": "abcfa9d981597592a3c6c34541ca96675462320c96d24479a53a2cc8c79d9d31",
+    "scripts/lib/media.mjs": "cb88ca3bb1295ca4139e5255bd339b851759b18fb8fc08a520613ca99d494c8e",
+    "scripts/lib/transitions.mjs": "9edadc890dd0f9f0f359f768e6cdd2cfba3680283b276444ebb3508c815c92c9"
+  },
+  "coreValidationSource": "Immutable git archive of exact da13ee7aa531572834b2d848304b6a38d1955f3d, installed in an isolated system temporary directory. All four previously recorded module hashes independently matched this snapshot; final export/compatibility checks use that immutable copy.",
+  "knownCoreBoundary": "Later canonical decoded-pixel comparison is a separate core follow-up; this real dataset was visually inspected and includes actual state changes. Final merged core must revalidate it; no re-encoded static frames were introduced."
+}

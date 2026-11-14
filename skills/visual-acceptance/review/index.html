@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Visual acceptance · 验收矩阵</title>
+  <link rel="stylesheet" href="./review.css">
+</head>
+<body>
+  <a class="skip-link" href="#matrix">跳到矩阵</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-text">
+        <strong id="project-name">验收矩阵</strong>
+        <span id="target-summary" class="muted"></span>
+      </div>
+    </div>
+    <div class="topbar-status">
+      <span id="storage-badge" class="storage-badge"></span>
+      <span id="global-save" class="save-status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="topbar-actions">
+      <label class="reviewer-field">审核人
+        <input id="reviewer" type="text" autocomplete="name" placeholder="你的名字" maxlength="80">
+      </label>
+      <button type="button" id="btn-copy" class="btn">复制人审意见</button>
+      <button type="button" id="btn-export" class="btn">导出 JSON</button>
+      <button type="button" id="btn-import" class="btn">导入 JSON</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <button type="button" id="btn-submit" class="btn btn-primary">提交给 Pi <span id="submit-count" class="count-pill">0</span></button>
+      <button type="button" id="btn-help" class="btn btn-icon" aria-label="键盘快捷键" title="键盘快捷键 (?)">?</button>
+    </div>
+  </header>
+
+  <div id="notices" class="notices" aria-live="polite"></div>
+
+  <div class="layout" id="layout">
+    <aside class="sidebar" aria-label="筛选与队列">
+      <section class="queue-box" aria-labelledby="queue-title">
+        <h2 id="queue-title" class="sr-only">逐项审核队列</h2>
+        <button type="button" id="btn-start-queue" class="btn btn-primary btn-block">逐项审核</button>
+        <div id="queue-info" class="queue-info"></div>
+      </section>
+      <nav id="presets" class="presets" aria-label="快速筛选"></nav>
+      <div class="search-row">
+        <input type="search" id="filter-text" placeholder="搜索场景/状态/设备/ID   /" aria-label="搜索">
+      </div>
+      <div id="facets" class="facets"></div>
+      <button type="button" id="btn-reset-filters" class="btn btn-ghost btn-block">重置为默认（需关注）</button>
+    </aside>
+
+    <main id="matrix" class="matrix-area" tabindex="-1" aria-label="验收矩阵">
+      <div class="matrix-toolbar">
+        <div id="variant-tabs" class="variant-tabs" role="tablist" aria-label="变体"></div>
+        <div id="matrix-summary" class="matrix-summary muted"></div>
+        <label class="zoom-field">预览尺寸
+          <input type="range" id="matrix-zoom" min="0.5" max="2.5" step="0.1" value="1" aria-label="矩阵预览尺寸">
+        </label>
+      </div>
+      <div id="matrix-legend" class="legend"></div>
+      <div id="matrix-scroll" class="matrix-scroll">
+        <div id="matrix-empty" class="empty-state" hidden></div>
+        <table id="matrix-table" class="matrix"></table>
+      </div>
+    </main>
+  </div>
+
+  <section id="review" class="review" hidden aria-label="单项评审">
+    <div class="review-bar">
+      <button type="button" id="btn-back-matrix" class="btn" title="返回矩阵 (Esc)">← 矩阵</button>
+      <button type="button" id="btn-prev" class="btn" title="上一项 ([ 或 K)">‹ 上一项</button>
+      <span id="queue-position" class="queue-position"></span>
+      <button type="button" id="btn-next" class="btn" title="下一项 (] 或 J)">下一项 ›</button>
+      <span id="review-title" class="review-title"></span>
+    </div>
+    <div class="review-body">
+      <div id="stage" class="stage"></div>
+      <div id="panel" class="panel"></div>
+    </div>
+  </section>
+
+  <dialog id="lightbox" class="lightbox" aria-label="原图查看"></dialog>
+  <dialog id="text-dialog" class="dialog" aria-labelledby="text-dialog-title"></dialog>
+  <dialog id="import-dialog" class="dialog" aria-labelledby="import-dialog-title"></dialog>
+  <dialog id="submit-dialog" class="dialog" aria-labelledby="submit-dialog-title"></dialog>
+  <dialog id="help-dialog" class="dialog" aria-labelledby="help-dialog-title"></dialog>
+  <input type="file" id="data-file" accept="application/json,.json" hidden>
+
+  <noscript><p class="noscript">此审核页需要启用 JavaScript（本地脚本，无外部依赖）。</p></noscript>
+
+  <!-- Data: core export writes review-data.js next to this file (absent in UI source). -->
+  <script src="./review-data.js"></script>
+  <script src="./review-model.js"></script>
+  <script src="./review-storage.js"></script>
+  <script src="./review-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "kind": "actual-image-inspection-notes",
+  "reviewer": {
+    "provider": "magpie",
+    "model": "codex/gpt-6.1-sol"
+  },
+  "delivery": "functions.read image attachments in visual-device session; not yet a core image receipt",
+  "demonstration": "Seeded source defect in the bundled native demo, not a finding in an existing user app",
+  "observations": [
+    {
+      "path": "phone-ready/screen.png",
+      "verdict": "fail",
+      "visibleText": [
+        "Your next adventure",
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Pine Ridge Loop",
+        "12.8 km",
+        "6 hours",
+        "Offline maps include...",
+        "Start at North Trailhead \u00b7 07:30"
+      ],
+      "comment": "Offline map coverage is visibly cut off after 'Offline maps include...' despite available card width. The full trail and emergency exit coverage cannot be read. Other ready-state content is visible and separated.",
+      "sha256": "45325879ddcd4db052368828ca6490c2f8421962d25ea6dd295a0ba43d4b3b18"
+    },
+    {
+      "path": "tablet-ready/screen.png",
+      "verdict": "fail",
+      "visibleText": [
+        "Your next adventure",
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Pine Ridge Loop",
+        "12.8 km",
+        "6 hours",
+        "Offline maps include...",
+        "Start at North Trailhead \u00b7 07:30"
+      ],
+      "comment": "The same coverage line is visibly truncated on the wider iPad layout. Most of the card row is unused. This confirms a shared source layout constraint rather than phone-only content pressure.",
+      "sha256": "4a0f4ec98cb34a7db648bdc0da11d56a12200d15b4e5fd3a8a0918624ed47781"
+    }
+  ],
+  "rootCause": "ItineraryView.ready constrains coverage Text to width 170 and lineLimit(1). Remove the width limit, permit wrapping, and let content grow vertically."
+}

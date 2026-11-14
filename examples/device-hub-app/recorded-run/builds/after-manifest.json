@@ -1,0 +1,21 @@
+{
+  "createdAt": "2026-11-14T16:02:25.535862+00:00",
+  "command": [
+    "xcrun",
+    "swiftc",
+    "-sdk",
+    "<installed iphonesimulator SDK>",
+    "-target",
+    "arm64-apple-ios18.0-simulator",
+    "-parse-as-library",
+    "Sources/TrailNotes.swift",
+    "-o",
+    "<new build>/TrailNotes.app/TrailNotes"
+  ],
+  "appId": "dev.pi.visualacceptance.TrailNotes",
+  "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.1.sdk",
+  "sourceSha256": "5382fd2efefb0f89469e26b685103ec611cbb3d94f010fc886ecf20875187433",
+  "executableSha256": "0ccb62a0fb6b752ed494e60ac4ee17a896c75bd1514de78393b5fafcc6c05dee",
+  "artifact": "builds/after-TrailNotes.app.zip",
+  "sourceSnapshot": "source/after"
+}

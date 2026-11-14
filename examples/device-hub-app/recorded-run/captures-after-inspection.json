@@ -1,0 +1,92 @@
+{
+  "kind": "actual-image-inspection-notes",
+  "reviewer": {
+    "provider": "magpie",
+    "model": "codex/gpt-6.1-sol"
+  },
+  "delivery": "functions.read image attachments in visual-device session; no core receipts yet",
+  "observations": [
+    {
+      "path": "phone-empty/screen.png",
+      "verdict": "pass",
+      "visibleText": [
+        "Your next adventure",
+        "No itinerary yet",
+        "Download your saved route to see trail details and offline maps.",
+        "Load itinerary",
+        "Test connection failure"
+      ],
+      "comment": "Empty-state message, download action and failure-test action are visible with clear separation; no overlap or truncation observed.",
+      "sha256": "1898d03bf2cf92336339215a032837e7d4533c1a2f8524143532ec83b4e47e13"
+    },
+    {
+      "path": "phone-ready/screen.png",
+      "verdict": "pass",
+      "visibleText": [
+        "Your next adventure",
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Pine Ridge Loop",
+        "12.8 km",
+        "6 hours",
+        "Offline maps include the full trail and emergency exit routes",
+        "Start at North Trailhead \u00b7 07:30"
+      ],
+      "comment": "Full coverage sentence wraps onto two readable lines on the phone, with no ellipsis. Trail distance, duration and departure details remain visible.",
+      "sha256": "a3854ae9105eac838371ab95bb9b321fc2bc64a946e0c66853f5f728fa6e3cc0"
+    },
+    {
+      "path": "phone-error/screen.png",
+      "verdict": "pass",
+      "visibleText": [
+        "Your next adventure",
+        "Connection unavailable",
+        "Your itinerary is safe. Reconnect and try the download again.",
+        "Try again"
+      ],
+      "comment": "Failure heading, recovery explanation and Try again action are visible. No clipping or overlap observed.",
+      "sha256": "f8b5137393002174e2f756423cc404c2e138d6171e121b9108428e352e10f060"
+    },
+    {
+      "path": "tablet-empty/screen.png",
+      "verdict": "pass",
+      "visibleText": [
+        "Your next adventure",
+        "No itinerary yet",
+        "Download your saved route to see trail details and offline maps.",
+        "Load itinerary",
+        "Test connection failure"
+      ],
+      "comment": "Empty-state message, download action and failure-test action are visible with clear separation; no overlap or truncation observed.",
+      "sha256": "effa482efc12932139ebe3caabd9bf4cb61c62902fe8c14d7be73b2611cc6d8a"
+    },
+    {
+      "path": "tablet-ready/screen.png",
+      "verdict": "pass",
+      "visibleText": [
+        "Your next adventure",
+        "Ready for offline use",
+        "Summit overnight itinerary",
+        "Pine Ridge Loop",
+        "12.8 km",
+        "6 hours",
+        "Offline maps include the full trail and emergency exit routes",
+        "Start at North Trailhead \u00b7 07:30"
+      ],
+      "comment": "Full coverage sentence is readable on one line in the wider iPad card, with no ellipsis. Trail distance, duration and departure details remain visible.",
+      "sha256": "c9b850ff2a038812ea53d782abf2b29d1c83551dab7de174633fa402cb96abc5"
+    },
+    {
+      "path": "tablet-error/screen.png",
+      "verdict": "pass",
+      "visibleText": [
+        "Your next adventure",
+        "Connection unavailable",
+        "Your itinerary is safe. Reconnect and try the download again.",
+        "Try again"
+      ],
+      "comment": "Failure heading, recovery explanation and Try again action are visible. No clipping or overlap observed.",
+      "sha256": "a2e3dfe3edb902511f9cf214bc62df3441d8ca4272100550d326d02af30e6639"
+    }
+  ]
+}
