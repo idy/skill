@@ -1,6 +1,6 @@
 # Core verification
 
-Install runtime dependencies without installing a second Pi host copy, then run the portable core checks:
+Install locked dependencies without installing a second Pi host copy, then run the core, UI model/storage and Device Hub checks:
 
 ```sh
 npm ci --ignore-scripts --omit=peer
@@ -8,6 +8,38 @@ npm test
 npm run check
 npm pack --dry-run
 ```
+
+For runtime-only use, add `--omit=dev`; this omits Playwright and never downloads a browser. The published/Git Pi package needs only its runtime image decoders. `npm run check` checks all shipped JavaScript entry points, UI scripts, adapter modules and demo scripts.
+
+## Real browser checks
+
+```sh
+npm run browser:install
+npm run test:browser
+```
+
+The baseline covers 13 real Chromium interaction cases using clearly marked UI fixtures. Three optional cases exercise core's real loopback server and the recorded native bundle:
+
+```sh
+node scripts/visual-acceptance.mjs demo-export --out ./browser-native-review
+VA_CORE_ROOT="$PWD" VA_CORE_STORE=/path/to/project/.visual-acceptance \
+VA_REAL_BUNDLE="$PWD/browser-native-review" npm run test:browser
+```
+
+The tests copy `VA_CORE_STORE` before writing automated opinions. The real server retry test intentionally fails dispatch after saving, restarts on the same loopback port with a new source/token, reloads the browser and verifies that the original batch body is accepted exactly once. It reports no Pi connection. The live host check below verifies actual delivery separately. `CHROME` and `PLAYWRIGHT_CORE` remain optional overrides for an existing installation; no temporary absolute install is required.
+
+## Opt-in actual Pi feedback check
+
+The probe uses the installed Pi SDK and its actual extension runtime, disk-backed session, browser autosave/explicit batch submission, exact duplicate JSON import and a fresh browser-exported JSON import. It never replaces `sendMessage`. The two feedback messages trigger at most two configured provider requests, with a 120-second overall abort timer, retries disabled and tools disabled for model responses. Credentials stay with Pi's normal model runtime and are not printed or copied. Every opinion is labelled `review-ui-browser-test`, and the expected next action is pending human review.
+
+```sh
+PI_TEST_PACKAGE_ROOT=/path/to/installed/pi-coding-agent \
+VA_CORE_STORE=/path/to/project/.visual-acceptance \
+VA_PI_PROVIDER=magpie VA_PI_MODEL=codex-remote/codex/gpt-6.1-sol \
+node tests/integration/pi-feedback.mjs
+```
+
+Select an already configured provider/model. The command prints a private evidence directory containing the copied store, `report.json`, batch files and the persistent Pi JSONL session. It asserts model-visible project/cell/capture/image/build identities, two durable `custom_message` records after reopening the session, and duplicate suppression. The server and browser close on exit. It tests feedback processing; it does not claim provider visual inspection or human acceptance.
 
 The Pi host tests require an existing Pi installation. Set `PI_TEST_PACKAGE_ROOT` to the root directory of its installed `@earendil-works/pi-coding-agent` package, then run `npm test`. For example, on a POSIX shell:
 

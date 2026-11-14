@@ -108,7 +108,8 @@
     var trigger = idx !== null ? arr(capture.actions)[idx] || null : null;
     var start = tr && tr.startEvidenceAssetId ? frames.find(function (f) { return f.id === tr.startEvidenceAssetId; }) || null : null;
     var end = tr && tr.endEvidenceAssetId ? frames.find(function (f) { return f.id === tr.endEvidenceAssetId; }) || null : null;
-    var identical = frames.length >= 2 && frames.every(function (f) { return f.sha256 && f.sha256 === frames[0].sha256; });
+    var pixelsKnown = frames.length >= 2 && frames.every(function (f) { return /^[a-f0-9]{64}$/.test(f.pixelSha256 || ''); });
+    var identical = pixelsKnown && frames.every(function (f) { return f.pixelSha256 === frames[0].pixelSha256; });
     if (!tr) gaps.push('缺少 transition 元数据（起止状态/时间）');
     if (frames.length < 3) gaps.push('只有 ' + frames.length + ' 帧，需至少 3 帧覆盖起、中、止');
     if (frames.length && !ordered) gaps.push('帧时间顺序无效');
@@ -116,6 +117,7 @@
     if (tr && (!start || start !== frames[0])) gaps.push('起始帧未绑定（startEvidenceAssetId）');
     if (tr && (!end || end !== frames[frames.length - 1])) gaps.push('结束帧未绑定（endEvidenceAssetId）');
     if (identical) gaps.push('所有代表帧完全相同，看不到可见过渡');
+    if (frames.length >= 3 && !pixelsKnown) gaps.push('尚无解码像素校验结果；文件哈希不同不能证明画面变化，请用当前 core 重新导出');
     return { meta: tr, trigger: trigger, triggerIndex: idx, startAssetId: start ? start.id : null, endAssetId: end ? end.id : null, identical: identical, gaps: gaps };
   }
 

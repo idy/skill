@@ -364,7 +364,13 @@ test('static: export, import into a fresh browser, conflicts and located errors'
   await page.setInputFiles('#import-file', f3);
   await page.waitForSelector('#import-dialog[open] li.err');
   assert.match(await page.textContent('#import-dialog li.err'), /drafts\[0\]\.cellId 未知格子/);
-  await ctx.close(); await ctx2.close();
+    // Cross-project opinions cannot enter this project's local drafts.
+    const otherProject = { ...ex, projectId: 'another-project' }; writeFileSync(f3, JSON.stringify(otherProject));
+    await page.click('#import-dialog footer button');
+    await page.setInputFiles('#import-file', f3);
+    await page.waitForSelector('#import-dialog[open]');
+    assert.match(await page.textContent('#import-dialog'), /projectId|项目/);
+    await ctx.close(); await ctx2.close();
 });
 
 test('static: submit explains no live Pi and offers batch JSON', { skip }, async () => {
@@ -554,6 +560,43 @@ test('core integration: real core server + copy of a real store (automated UI te
     const hr = after.cells.find(c => c.id === withHistory.id).humanReviews;
     assert.equal(hr.length, 1); assert.equal(hr[0].decision, 'blocked'); assert.equal(hr[0].verdict, 'question'); assert.equal(hr[0].reviewer, 'review-ui-browser-test');
     await shot(page, '22-core-real-submitted');
+    assert.deepEqual(page.errors, []);
+  } finally { await ctx.close(); await srv.close(); }
+});
+
+test('core integration: HTTP503 accepted/pending survives browser reload and real server restart with exact original batch', { skip: skip || (!CORE || !STORE ? 'set VA_CORE_ROOT and VA_CORE_STORE' : false) }, async () => {
+  const copy = join(mkdtempSync(join(tmpdir(), 'va-core-retry-')), 'store');
+  cpSync(STORE, copy, { recursive: true });
+  const { EvidenceStore } = await import(pathToFileURL(join(CORE, 'scripts/lib/store.mjs')));
+  const { startReviewServer } = await import(pathToFileURL(join(CORE, 'scripts/lib/server.mjs')));
+  const store = new EvidenceStore(copy), data = await store.reviewData(), cell = data.cells.find(c => c.capture);
+  const attempts = [];
+  let srv = await startReviewServer(store, { onFeedback: async batch => { attempts.push(JSON.stringify(batch)); throw new Error('Automated dispatch fault injection; feedback is already persisted'); } });
+  const ctx = await browser.newContext();
+  try {
+    const page = await newPage(ctx, srv.url + '/');
+    await page.fill('#reviewer', 'review-ui-browser-test');
+    await openCell(page, cell.id);
+    await page.fill('#comment', 'Automated restart recovery test; origin=review-ui-browser-test; not human acceptance.');
+    await page.click('.decision[data-decision="blocked"]');
+    await page.waitForFunction(key => window.__vaReviewApp.saveStates.get(key)?.status === 'saved' && !window.__vaReviewApp.busy, cell.id + '@' + cell.capture.id);
+    await page.click('#btn-back-matrix'); await page.click('#btn-submit'); await page.click('#btn-send-batch');
+    await page.waitForSelector('#submit-result .notice.warn');
+    assert.match(await page.textContent('#submit-result'), /意见已保存，回 Pi 待重试/);
+    assert.equal(attempts.length, 1);
+    const url = srv.url, port = Number(new URL(url).port), oldSource = JSON.parse(attempts[0]).sourceId;
+    await srv.close();
+    srv = await startReviewServer(store, { port, onFeedback: async batch => { attempts.push(JSON.stringify(batch)); return { state: 'not-connected' }; } });
+    assert.notEqual(srv.sourceId, oldSource);
+    // Fresh auth comes from the restarted real server. The pending body's old
+    // source, ID and edits survive both page and server restarts unchanged.
+    await page.reload(); await page.waitForSelector('[data-notice="dispatch"]');
+    await page.click('[data-notice="dispatch"] button'); await page.click('#btn-retry-batch');
+    await page.waitForFunction(() => /服务器已有此批次/.test(document.getElementById('submit-result').textContent));
+    assert.equal(attempts.length, 2); assert.equal(attempts[0], attempts[1]);
+    assert.match(await page.textContent('#submit-result'), /没有连接 Pi 会话/);
+    assert.equal((await store.reviewData()).cells.find(c => c.id === cell.id).humanReviews.length, 1);
+    await shot(page, '23-core-restarted-original-batch');
     assert.deepEqual(page.errors, []);
   } finally { await ctx.close(); await srv.close(); }
 });

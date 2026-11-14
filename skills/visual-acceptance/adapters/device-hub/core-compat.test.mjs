@@ -11,6 +11,17 @@ const data=JSON.parse(await readFile(resolve(repo,'examples/device-hub-app/recor
 const api=available?await import(pathToFileURL(resolve(core,'scripts/lib/transitions.mjs'))):{};
 const contracts=available?await import(pathToFileURL(resolve(core,'scripts/lib/contracts.mjs'))):{};
 const transitions=data.cells.filter(c=>c.stateId==='download');
+// The structural validator consumes fingerprints verified by the store. This
+// portable bundle predates that optional field, so obtain it from ORIGINAL
+// encoded-SHA-verified media via the current decoder, as verifiedCapture does.
+if (available) {
+ const media=await import(pathToFileURL(resolve(core,'scripts/lib/media.mjs')));
+ for(const cell of transitions)for(const capture of [cell.capture,...cell.captures])for(const asset of capture.assets.filter(a=>a.kind==='frame')){
+  const bytes=await readFile(resolve(repo,'examples/device-hub-app/recorded-run',asset.path));
+  assert.equal(contracts.sha256(bytes),asset.sha256);
+  asset.pixelSha256=media.decodeImage(bytes).pixelSha256;
+ }
+}
 run('actual recorded spec-2 transitions satisfy the fixed core; old histories do not silently pass',()=>{
  assert.equal(data.reviewProtocol,'visual-acceptance-2');assert.equal(data.target.specRev,'demo-spec-2');
  for(const c of transitions){
@@ -26,13 +37,13 @@ run('actual timeline rejects missing bindings, outside action, missing state ass
   const invalid=structuredClone(cell.capture);mutate(invalid);assert.ok(api.transitionFindings(invalid,row).blockers.length);
  }
 });
-run('baseline core allows repeated waiting/1ms rounding, rejects identical file SHA and larger mismatch',()=>{
+run('canonical core allows repeated waiting/1ms rounding, rejects identical decoded pixels and larger mismatch',()=>{
  const cell=transitions[0],row=data.spec.states.find(s=>s.id===cell.stateId);
- const waiting=structuredClone(cell.capture),frames=waiting.assets.filter(a=>a.kind==='frame');frames[1].sha256=frames[0].sha256;
+ const waiting=structuredClone(cell.capture),frames=waiting.assets.filter(a=>a.kind==='frame');frames[1].pixelSha256=frames[0].pixelSha256;
  assert.deepEqual(api.transitionFindings(waiting,row).blockers,[]);
  frames[2].offsetMs+=1;assert.deepEqual(api.transitionFindings(waiting,row).blockers,[]);
  frames[2].offsetMs+=1;assert.ok(api.transitionFindings(waiting,row).blockers.some(b=>b.includes('1ms')));
- const replay=structuredClone(cell.capture);for(const a of replay.assets.filter(a=>a.kind==='frame'))a.sha256='a'.repeat(64);
+ const replay=structuredClone(cell.capture);for(const a of replay.assets.filter(a=>a.kind==='frame'))a.pixelSha256='a'.repeat(64);
  assert.ok(api.transitionFindings(replay,row).blockers.some(b=>b.includes('identical pixels')));
 });
 run('old review protocol is stale even when its original image/build/runtime/spec pointers match',()=>{

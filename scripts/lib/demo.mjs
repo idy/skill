@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { AI_REVIEW_PROTOCOL, check, sha256, canonical } from './contracts.mjs';
 import { reviewFiles } from './review-files.mjs';
 import { decodeImage } from './media.mjs';
+import { transitionFindings } from './transitions.mjs';
 
 const recordedDir = fileURLToPath(new URL('../../examples/device-hub-app/recorded-run/', import.meta.url));
 
@@ -27,9 +28,27 @@ export async function exportDemo(out) {
   check(script.startsWith(prefix) && canonical(JSON.parse(script.slice(prefix.length).trim().replace(/;$/, ''))) === canonical(data), 'Demo JSON/JS mismatch');
   for (const cell of data.cells) for (const capture of cell.captures) for (const asset of capture.assets) {
     const bytes = files.get(asset.path); check(bytes && sha256(bytes) === asset.sha256, `Missing/corrupt demo evidence: ${asset.path}`);
-    if (asset.kind !== 'video') { const image = decodeImage(bytes); check(image.width === asset.width && image.height === asset.height, 'Demo dimensions mismatch'); }
+    if (asset.kind !== 'video') { const image = decodeImage(bytes); check(image.width === asset.width && image.height === asset.height, 'Demo dimensions mismatch'); asset.pixelSha256 = image.pixelSha256; }
   }
+  // Revalidate recorded captures with the installed core. Derived fingerprints
+  // do not change original image bytes, encoded hashes, captures or AI identities.
+  for (const cell of data.cells) {
+    if (!cell.capture) continue;
+    cell.capture = cell.captures.find(c => c.id === cell.capture.id);
+    const findings = transitionFindings(cell.capture,data.spec.states.find(s=>s.id===cell.stateId));
+    cell.blockers = [...new Set([...cell.blockers,...findings.blockers])];
+    if (cell.blockers.length) {
+      cell.status = 'blocked'; cell.currentAIReview = null;
+      for (const review of cell.aiReviews) { review.stale = true; review.staleReasons = [...new Set([...review.staleReasons,'Evidence blocked or corrupt'])]; }
+    }
+  }
+  data.summary.aiPass = data.cells.filter(c=>c.status==='pass').length;
+  data.summary.finalAIPass = data.cells.length > 0 && data.summary.aiPass === data.cells.length;
+  files.set('review.json',Buffer.from(JSON.stringify(data,null,2)+'\n'));
+  files.set('review-data.js',Buffer.from(prefix+JSON.stringify(data).replaceAll('<','\\u003c').replaceAll('\u2028','\\u2028').replaceAll('\u2029','\\u2029')+';\n'));
+  files.set('EXPORT.md',Buffer.from('Generated from the shipped native recording. Current core recomputed decoded dimensions/RGBA pixel fingerprints and transition blockers from the original verified media. Image bytes, encoded hashes and review/capture identities are unchanged. INDEX.md records the original collection and review provenance. Human acceptance remains pending.\n'));
   for (const [name,path] of await reviewFiles()) files.set(name.slice(1),await readFile(path));
+  files.set('SHA256SUMS.json',Buffer.from(JSON.stringify([...files].filter(([name])=>name!=='SHA256SUMS.json').map(([path,bytes])=>({path,bytes:bytes.length,sha256:sha256(bytes)})),null,2)+'\n'));
   const destination = resolve(out);
   // A fresh directory prevents pre-existing links or unrelated files from being
   // incorporated into a supposedly self-contained static export.

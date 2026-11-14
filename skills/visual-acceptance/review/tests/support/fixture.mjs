@@ -42,7 +42,9 @@ export function buildFixture({ round = 1 } = {}) {
     const hash = sha(body);
     const path = `evidence/${hash}.svg`;
     files.set(path, body);
-    return { id, kind, path, sha256: hash, mimeType: 'image/svg+xml', width: opts.w, height: opts.h, capturedAt: iso(extra.at || 0), ...extra.fields };
+    // Synthetic fixture-only digest used to exercise the presentation field;
+    // SVG fixtures are never decoded/certified by core or accepted as native evidence.
+    return { id, kind, path, sha256: hash, pixelSha256: sha('synthetic-ui-pixel-fixture:' + body), mimeType: 'image/svg+xml', width: opts.w, height: opts.h, capturedAt: iso(extra.at || 0), ...extra.fields };
   }
   const project = { id: 'review-ui-fixture', name: 'Review UI fixture (NOT app evidence)' };
   const spec = {

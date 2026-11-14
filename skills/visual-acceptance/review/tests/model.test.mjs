@@ -56,7 +56,7 @@ test('evidence facts: missing, blocked, broken path kept, process gap, orientati
 test('transition eligibility: >=3 ordered frames, bound trigger/start/end, visible change; video alone is not motion proof', () => {
   assert.equal(M.framesOrdered([{ offsetMs: 0 }, { offsetMs: 10 }]), true);
   assert.equal(M.framesOrdered([{ offsetMs: 0 }, { offsetMs: 0 }]), false);
-  const fr = (id, o, sha = id) => ({ id, kind: 'frame', offsetMs: o, sha256: sha });
+  const fr = (id, o, sha = id) => ({ id, kind: 'frame', offsetMs: o, sha256: sha, pixelSha256: id.repeat(64) });
   const ok = { status: 'captured', actions: [{ at: 'x', type: 'tap', description: 'd' }], assets: [fr('a', 0), fr('b', 50), fr('c', 100)], transition: { fromStateId: 's', toStateId: 't', triggerActionIndex: 0, startEvidenceAssetId: 'a', endEvidenceAssetId: 'c' } };
   const good = M.captureFacts('transition', ok);
   assert.equal(good.processGap, false); assert.equal(good.transition.trigger.type, 'tap'); assert.equal(good.transition.startAssetId, 'a'); assert.equal(good.transition.endAssetId, 'c');
@@ -66,7 +66,8 @@ test('transition eligibility: >=3 ordered frames, bound trigger/start/end, visib
   assert.match(gapOf(c => { delete c.transition.triggerActionIndex; }).transition.gaps.join(), /触发动作/);
   assert.match(gapOf(c => { c.transition.startEvidenceAssetId = 'b'; }).transition.gaps.join(), /起始帧未绑定/);
   assert.match(gapOf(c => { c.transition.endEvidenceAssetId = 'nope'; }).transition.gaps.join(), /结束帧未绑定/);
-  assert.match(gapOf(c => { c.assets.forEach(a => { a.sha256 = 'same'; }); }).transition.gaps.join(), /完全相同/);
+  assert.match(gapOf(c => { c.assets.forEach(a => { a.pixelSha256 = 'a'.repeat(64); }); }).transition.gaps.join(), /完全相同/);
+  assert.match(gapOf(c => { c.assets.forEach(a => { delete a.pixelSha256; }); }).transition.gaps.join(), /文件哈希不同不能证明画面变化/);
   assert.equal(gapOf(c => { delete c.transition; }).processGap, true);
   assert.equal(M.captureFacts('transition', { status: 'captured', assets: [{ kind: 'screenshot' }, { kind: 'video', durationMs: 900 }] }).processGap, true, 'video alone is not motion proof');
 });

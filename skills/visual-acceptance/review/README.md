@@ -19,9 +19,10 @@ static HTTP) and behind core's loopback server.
 | `review-storage.js` | Draft storage (localStorage, rev-checked) and the loopback API client. |
 | `review-app.js` | DOM app: matrix, focused review, sequence viewer, lightbox, dialogs, keyboard. |
 
-`ui-files.json` lists exactly what core should copy or serve. `tests/` and
-this README are not part of the UI bundle. Core's export copies the whole
-directory today; it should copy only `ui-files.json` entries (requested from core).
+`ui-files.json` lists exactly what core copies and serves. A shared loader validates
+flat relative resource names, uniqueness, reserved generated-data names and regular
+files without symlinks. `tests/` and this README are not part of the exported UI or
+localhost routes.
 
 ## Data loading (docs/contracts.md, schemaVersion 1)
 
@@ -59,7 +60,10 @@ Page URLs carry no query string (core's server rejects them). Deep links use
   `endEvidenceAssetId`) are marked. The view has a timeline with action markers,
   playback at the recorded intervals, and a video when one exists. The UI explains
   a **process gap** when there are fewer than 3 ordered frames, the trigger, start
-  or end frame is not bound, or every frame is identical. Video alone is not
+  or end frame is not bound, or decoded `pixelSha256` fingerprints show every
+  frame is identical. Different encoded file hashes cannot establish visual change.
+  Older exports without decoded fingerprints say that pixel change is unverified;
+  re-export using current core. Video alone is not
   treated as motion proof. A single end screenshot never passes as a verified transition.
 - **Provenance**: real device, simulator or emulator, and controlled IO (runtime
   `fixture.mode`). Anything whose `provenance.source` is not `real-app` is
@@ -160,16 +164,21 @@ back to matrix · `/` search · arrows move between tiles · `?` help.
 ## Tests
 
 ```bash
-# model, storage and bundle hygiene (no dependencies)
-node --test skills/visual-acceptance/review/tests/*.test.mjs
+# Install the locked development dependencies and Chromium once.
+npm ci --ignore-scripts --omit=peer
+npm run browser:install
 
-# real browser (playwright-core is NOT a repo dependency; point at any install)
-PLAYWRIGHT_CORE=/path/node_modules/playwright-core \
-CHROME=/path/chrome-headless-shell \
-VA_SHOTS=/tmp/va-review-ui-shots \
-VA_CORE_ROOT=/path/to/core/checkout VA_CORE_STORE=/path/to/store-to-copy \
+# core + UI model/storage + adapter checks (host tests are opt-in)
+npm test
+
+# Real browser. The first 13 tests require no private store. To include the two
+# real-core server cases and native bundle case, supply these optional inputs:
+VA_CORE_ROOT=/path/to/this/checkout VA_CORE_STORE=/path/to/store-to-copy \
 VA_REAL_BUNDLE=/path/to/exported/review-dir \
-node --test skills/visual-acceptance/review/tests/browser/review-ui.browser.mjs
+VA_SHOTS=/tmp/va-review-ui-shots npm run test:browser
+
+# Optional existing-browser override (no absolute temporary path is required):
+# CHROME=/path/to/chrome-headless-shell npm run test:browser
 ```
 
 The static and mock-server suites use **FIXTURE** data from
