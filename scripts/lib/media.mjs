@@ -1,5 +1,6 @@
 import { readFile, readdir, lstat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 import jpeg from 'jpeg-js';
 import { check, sha256 } from './contracts.mjs';
@@ -16,7 +17,12 @@ export function decodeImage(bytes) {
     decoded = jpeg.decode(bytes, { useTArray: true, maxResolutionInMP: 40, maxMemoryUsageInMB: 256 }); mimeType = 'image/jpeg'; ext = 'jpg';
   } else throw new Error('Unsupported or corrupt image; expected PNG or JPEG');
   check(decoded.width > 0 && decoded.height > 0 && decoded.data?.length === decoded.width * decoded.height * 4, 'Image decode failed');
-  return { width: decoded.width, height: decoded.height, mimeType, ext };
+  // Encoded hashes identify immutable files; eligibility compares a format-independent
+  // decoded raster. Include dimensions and a versioned RGBA8 domain, not PNG/JPEG metadata.
+  const dimensions = Buffer.alloc(8);
+  dimensions.writeUInt32BE(decoded.width, 0); dimensions.writeUInt32BE(decoded.height, 4);
+  const pixelSha256 = createHash('sha256').update('visual-acceptance:rgba8:v1\0').update(dimensions).update(decoded.data).digest('hex');
+  return { width: decoded.width, height: decoded.height, mimeType, ext, pixelSha256 };
 }
 export async function hashArtifact(path) {
   const info = await lstat(path); check(!info.isSymbolicLink(), 'Artifact symlinks are not supported; supply immutable bytes');

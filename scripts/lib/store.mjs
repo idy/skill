@@ -197,24 +197,41 @@ export class EvidenceStore {
       await this.immutable('captures', value); state.captures.push(value.id); return { state, value };
     });
   }
-  async verifyAsset(asset) {
+  async inspectAsset(asset) {
     check(/^evidence\/[a-f0-9]{64}\.(png|jpg|mp4|webm)$/.test(asset.path), 'Invalid stored evidence path');
     const path = join(this.root, 'blobs', asset.path.slice('evidence/'.length));
     const bytes = await readFile(path); check(sha256(bytes) === asset.sha256, 'Evidence image/hash integrity failure');
-    if (asset.kind !== 'video') { const decoded = decodeImage(bytes); check(decoded.width === asset.width && decoded.height === asset.height, 'Stored image dimensions changed'); }
-    return bytes;
+    const image = asset.kind !== 'video' ? decodeImage(bytes) : null;
+    if (image) check(image.width === asset.width && image.height === asset.height, 'Stored image dimensions changed');
+    return { bytes, image };
+  }
+  async verifyAsset(asset) { return (await this.inspectAsset(asset)).bytes; }
+  async verifiedCapture(capture) {
+    const assets = [], blockers = [];
+    for (const asset of capture.assets) {
+      // Persisted/supplied fingerprints are only hints. Recompute from the verified blob at
+      // every read/record boundary, including legacy records that never stored this field.
+      const { pixelSha256: _untrusted, ...fields } = asset;
+      try {
+        const { image } = await this.inspectAsset(fields);
+        assets.push(image ? { ...fields, pixelSha256: image.pixelSha256 } : fields);
+      } catch (error) { assets.push(fields); blockers.push(`${asset.id}: ${error.message}`); }
+    }
+    return { capture: { ...capture, assets }, blockers };
   }
   async reviewData() {
     const state = await this.state(), spec = await this.record('specs', state.specRev);
     const [captures, reviews, batches] = await Promise.all(['captures','aiReviews','feedback'].map(k => this.records(state, k)));
     const cells = [];
     for (const cell of spec.cells) {
-      const history = captures.filter(c => c.cellId === cell.id); const capture = history.at(-1) ?? null;
+      const history = captures.filter(c => c.cellId === cell.id);
+      const verified = history.length ? await this.verifiedCapture(history.at(-1)) : { capture: null, blockers: [] };
+      const capture = verified.capture;
+      if (capture) history[history.length - 1] = capture;
       const reasons = capture ? staleReasons({ ...capture, captureId: capture.id }, capture, state.target, state.policy.revision) : [];
       if (capture?.specRev !== state.specRev && capture) reasons.push('spec revision changed');
-      const blockers = [...(capture?.blockers ?? [])];
+      const blockers = [...(capture?.blockers ?? []), ...verified.blockers];
       if (capture) blockers.push(...transitionFindings(capture, spec.states.find(s => s.id === cell.stateId)).blockers);
-      if (capture) for (const asset of capture.assets) try { await this.verifyAsset(asset); } catch (e) { blockers.push(`${asset.id}: ${e.message}`); }
       const aiReviews = reviews.filter(r => r.cellId === cell.id).map(r => {
         const stale = staleReasons(r, capture, state.target, state.policy.revision, true);
         if (blockers.length) stale.push('Evidence blocked or corrupt'); if (capture?.specRev !== state.specRev) stale.push('spec revision changed');
@@ -335,9 +352,11 @@ export class EvidenceStore {
     check(input.visibleText.length || /no (visible )?text|无.*(文字|文本)/i.test(input.comment), 'Record visible text or explicitly explain no visible text');
     list(input.observations, 'observations'); list(input.receiptIds, 'receiptIds');
     return this.transaction(async state => {
-      const captures = await this.records(state, 'captures'), capture = captures.filter(c => c.cellId === input.cellId).at(-1);
-      check(capture?.id === input.captureId, 'Review capture is no longer current');
-      check(capture.status !== 'blocked' && capture.blockers.length === 0, 'Evidence blocked');
+      const captures = await this.records(state, 'captures'), current = captures.filter(c => c.cellId === input.cellId).at(-1);
+      check(current?.id === input.captureId, 'Review capture is no longer current');
+      check(current.status !== 'blocked' && current.blockers.length === 0, 'Evidence blocked');
+      const verified = await this.verifiedCapture(current), capture = verified.capture;
+      check(verified.blockers.length === 0, `Evidence blocked or corrupt: ${verified.blockers.join('; ')}`);
       check(staleReasons({ ...capture, captureId: capture.id }, capture, state.target, state.policy.revision).length === 0 && state.specRev === capture.specRev, 'Review target is stale');
       const spec = await this.record('specs', capture.specRev), cell = spec.cells.find(c => c.id === capture.cellId);
       check(transitionFindings(capture, spec.states.find(s => s.id === cell?.stateId)).blockers.length === 0, 'Transition evidence is incomplete under current validation; collect and inspect a new capture');
@@ -348,7 +367,6 @@ export class EvidenceStore {
       }
       const receipts = await Promise.all(input.receiptIds.map(v => { check(state.receipts.includes(v), 'Unknown receipt'); return this.record('receipts', v); }));
       for (const asset of imageAssets(capture)) {
-        await this.verifyAsset(asset);
         const receipt = receipts.find(r => r.assetId === asset.id && r.sha256 === asset.sha256);
         check(receipt && receipt.sessionId === sessionId && receipt.captureId === capture.id && receipt.imageSetHash === imageSetHash(capture) && canonical(receipt.reviewer) === canonical(reviewer) && receipt.policyRev === state.policy.revision && receipt.reviewProtocol === AI_REVIEW_PROTOCOL, `Image ${asset.id} was not supplied in this session/model/target; call image tool first`);
         const observation = input.observations.find(o => o.assetId === asset.id && o.sha256 === asset.sha256); text(observation?.detail, `Detailed observation for ${asset.id}`);
