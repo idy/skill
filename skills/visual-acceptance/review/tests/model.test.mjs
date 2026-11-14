@@ -71,6 +71,17 @@ test('transition eligibility: >=3 ordered frames, bound trigger/start/end, visib
   assert.equal(M.captureFacts('transition', { status: 'captured', assets: [{ kind: 'screenshot' }, { kind: 'video', durationMs: 900 }] }).processGap, true, 'video alone is not motion proof');
 });
 
+test('reviewProtocol: AI reviews under another protocol are history only, never current', () => {
+  const raw = buildFixture().view; raw.reviewProtocol = 'visual-acceptance-2';
+  const pass = cellIdFor({ scenarioId: 'checkout', stateId: 'cart-empty', deviceId: 'phone-a', orientation: 'portrait', variantId: 'default' });
+  let c = M.prepareView(raw).cellsById.get(pass);
+  assert.equal(c.aiVerdict, 'stale', 'old-protocol pass is not current');
+  assert.match(c.aiOld[0].staleReasons.join(), /协议不匹配/);
+  raw.cells.find(x => x.id === pass).aiReviews[0].reviewProtocol = 'visual-acceptance-2';
+  c = M.prepareView(raw).cellsById.get(pass);
+  assert.equal(c.aiVerdict, 'pass');
+});
+
 test('historical human reviews for removed cells are exposed, stale', () => {
   const v = fx();
   assert.equal(v.historicalHumanReviews.length, 1); assert.equal(v.historicalHumanReviews[0].stale, true);

@@ -527,6 +527,10 @@ test('core integration: real core server + copy of a real store (automated UI te
     const imgs = await page.evaluate(() => Array.from(document.querySelectorAll('.tile img')).map(i => i.naturalWidth));
     assert.ok(imgs.length > 0 && imgs.every(w => w > 0), 'real evidence images load: ' + imgs);
     assert.equal(await page.locator('.tile .chip.fixture').count(), 0, 'real-app evidence is not labelled fixture');
+    // AI that core marks stale (e.g. pre-upgrade reviewProtocol) never shows as a current verdict
+    const staleCells = data.cells.filter(c => c.aiReviews.length && !c.currentAIReview).length;
+    assert.equal(await page.locator('.tile .chip.ai-stale').count() >= staleCells, true);
+    assert.equal(await page.locator('.tile .chip.ai-pass').count(), data.cells.filter(c => c.currentAIReview?.verdict === 'pass').length);
     await shot(page, '20-core-real-matrix');
     const withHistory = data.cells.find(c => c.captures.length > 1) || data.cells[0];
     await openCell(page, withHistory.id);

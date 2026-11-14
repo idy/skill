@@ -184,8 +184,16 @@
       var imgOrientation = orientationOfSize(size);
       var orientationMismatch = !!(size && (orientation === 'portrait' || orientation === 'landscape') && imgOrientation !== 'square' && imgOrientation !== orientation);
 
-      var aiReviews = arr(c.aiReviews).filter(isObj).slice().sort(function (a, b) { return timeOf(b.createdAt) - timeOf(a.createdAt); });
+      // reviewProtocol (contract da13ee7): when the view declares one, an AI review made under
+      // another protocol is history only, even if an older export did not mark it stale.
+      var aiReviews = arr(c.aiReviews).filter(isObj).map(function (r) {
+        if (!raw.reviewProtocol || r.reviewProtocol === raw.reviewProtocol) return r;
+        var reasons = arr(r.staleReasons).slice(); var why = 'AI 评审协议不匹配（' + (r.reviewProtocol || '未标注') + ' ≠ ' + raw.reviewProtocol + '），需重新看图';
+        if (reasons.indexOf(why) < 0) reasons.push(why);
+        return Object.assign({}, r, { stale: true, staleReasons: reasons });
+      }).sort(function (a, b) { return timeOf(b.createdAt) - timeOf(a.createdAt); });
       var aiCurrent = resolveCurrent(c.currentAIReview, aiReviews);
+      if (aiCurrent && raw.reviewProtocol && aiCurrent.reviewProtocol !== raw.reviewProtocol) aiCurrent = null;
       if (aiCurrent && (aiCurrent.stale || !capture || aiCurrent.captureId !== capture.id)) aiCurrent = null;
       // fall back to the latest non-stale review of the current capture (never an older capture's)
       if (!aiCurrent && capture) aiCurrent = aiReviews.find(function (r) { return !r.stale && r.captureId === capture.id; }) || null;
@@ -255,7 +263,7 @@
 
     return {
       raw: raw, schemaVersion: raw.schemaVersion, project: raw.project, spec: spec, target: raw.target || {}, policy: raw.policy || {},
-      generatedAt: raw.generatedAt || null, storage: raw.storage || {}, summary: isObj(raw.summary) ? raw.summary : null,
+      reviewProtocol: raw.reviewProtocol || null, generatedAt: raw.generatedAt || null, storage: raw.storage || {}, summary: isObj(raw.summary) ? raw.summary : null,
       builds: byId(raw.builds), runtimes: byId(raw.runtimes), sources: byId(raw.sources),
       historicalHumanReviews: arr(raw.historicalHumanReviews).filter(isObj),
       scenarios: scenarios, states: states, devices: devices, variants: variants, variantList: variantList,

@@ -70,7 +70,9 @@ Page URLs carry no query string (core's server rejects them). Deep links use
 
 AI reviews are read-only and current only for the current capture. Reviews of
 older captures, or reviews the view model marks stale, appear under
-"已失效的 AI 意见". Human drafts are stored separately and keyed by
+"已失效的 AI 意见". If the view declares `reviewProtocol` (currently
+`visual-acceptance-2`), AI reviews under any other protocol are history only, even
+when an older export did not mark them stale. Human drafts are stored separately and keyed by
 `cellId@captureId`. New evidence never rebinds a draft:
 
 - While you edit, newer evidence for the same cell shows a banner. Your editor
