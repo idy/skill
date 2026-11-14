@@ -48,7 +48,7 @@ test('capture, read and record block static decoded frames despite different enc
   // Synthetic legacy record: pre-fix versions could persist captured/pass eligibility with
   // only encoded SHAs. Opening it must derive actual pixels, never trust those historical flags.
   const legacy=structuredClone(cap);legacy.status='captured';legacy.blockers=[];for(const a of legacy.assets)delete a.pixelSha256;
-  const path=join(f.store.root,'captures',`${cap.id}.json`);await writeFile(path,JSON.stringify(legacy));
+  const path=f.store.recordPath('captures',cap.id);await writeFile(path,JSON.stringify(legacy));
   let data=await f.store.reviewData();assert.equal(data.cells[0].status,'blocked');assert.match(data.cells[0].blockers.join(),/identical pixels/);assert.equal(new Set(data.cells[0].capture.assets.map(a=>a.pixelSha256)).size,1);assert.equal(data.summary.finalAIPass,false);
   assert.ok(!(await f.store.record('captures',cap.id)).assets.some(a=>'pixelSha256'in a),'read does not rewrite immutable legacy records');
   await assert.rejects(f.store.recordAI(f.review(legacy,[]),f.imageOptions),/Transition evidence is incomplete/);
@@ -62,7 +62,7 @@ test('read/record cannot skip failed PNG or JPEG decode behind valid file hashes
   const badPNG=Buffer.from(bytes[0]);badPNG[badPNG.length-1]^=1;
   for(const [ext,bad]of [['png',badPNG],['jpg',Buffer.from([255,216,255,217])]]){
     const a=legacy.assets[0],hash=sha256(bad);Object.assign(a,{sha256:hash,path:`evidence/${hash}.${ext}`,mimeType:ext==='png'?'image/png':'image/jpeg',pixelSha256:'f'.repeat(64)});await writeFile(join(f.store.root,'blobs',`${hash}.${ext}`),bad);
-    await writeFile(join(f.store.root,'captures',`${cap.id}.json`),JSON.stringify(legacy));const data=await f.store.reviewData();assert.equal(data.cells[0].status,'blocked');assert.ok(data.cells[0].blockers.some(b=>b.startsWith('frame-0:')));assert.match(data.cells[0].blockers.join(),/verified decoded pixel fingerprints/);assert.equal(data.cells[0].capture.assets[0].pixelSha256,undefined);await assert.rejects(f.store.recordAI(f.review(legacy,[]),f.imageOptions),/Evidence blocked or corrupt/);
+    await writeFile(f.store.recordPath('captures',cap.id),JSON.stringify(legacy));const data=await f.store.reviewData();assert.equal(data.cells[0].status,'blocked');assert.ok(data.cells[0].blockers.some(b=>b.startsWith('frame-0:')));assert.match(data.cells[0].blockers.join(),/verified decoded pixel fingerprints/);assert.equal(data.cells[0].capture.assets[0].pixelSha256,undefined);await assert.rejects(f.store.recordAI(f.review(legacy,[]),f.imageOptions),/Evidence blocked or corrupt/);
   }
   // The capture path also rejects each corrupt supported format before it can be approved.
   for(const [i,ext]of ['png','jpg'].entries()){

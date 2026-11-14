@@ -32,7 +32,7 @@ test('P1: replayed static frames, unrelated actions and missing endpoint coverag
   const valid=await f.store.addCapture(await transition(f,'real-wait-samples'));assert.equal(valid.status,'captured');assert.equal(new Set(valid.assets.map(a=>a.sha256)).size,2);
   const receipts=[];for(const a of valid.assets)receipts.push((await f.store.provideImage({cellId:valid.cellId,assetId:a.id,...f.imageOptions})).receipt);await f.store.recordAI(f.review(valid,receipts),f.imageOptions);assert.equal((await f.store.reviewData()).summary.finalAIPass,true);
   // Simulate a persisted pre-upgrade record; read/review cannot trust its old captured/pass flags.
-  delete valid.transition.triggerActionIndex;await writeFile(join(f.store.root,'captures',`${valid.id}.json`),JSON.stringify(valid));
+  delete valid.transition.triggerActionIndex;await writeFile(f.store.recordPath('captures',valid.id),JSON.stringify(valid));
   const upgraded=await f.store.reviewData();assert.equal(upgraded.summary.finalAIPass,false);assert.equal(upgraded.cells[0].currentAIReview,null);assert.equal(upgraded.cells[0].aiReviews[0].stale,true);await assert.rejects(f.store.recordAI(f.review(valid,receipts),f.imageOptions),/Transition evidence is incomplete/);
 });
 
@@ -40,7 +40,7 @@ test('legacy review protocol cannot preserve old approvals or reuse old receipts
   const f=await fixture(t,p=>{p.spec.cells=p.spec.cells.slice(0,1);}),cap=await f.store.addCapture(f.capture()),image=await f.store.provideImage({cellId:cap.cellId,...f.imageOptions});
   const review=await f.store.recordAI(f.review(cap,[image.receipt]),f.imageOptions);assert.equal((await f.store.reviewData()).summary.finalAIPass,true);
   // Persisted v1 records had no protocol field. Preserve them as stale history, not approvals.
-  delete review.reviewProtocol;delete image.receipt.reviewProtocol;await writeFile(join(f.store.root,'aiReviews',`${review.id}.json`),JSON.stringify(review));await writeFile(join(f.store.root,'receipts',`${image.receipt.id}.json`),JSON.stringify(image.receipt));
+  delete review.reviewProtocol;delete image.receipt.reviewProtocol;await writeFile(f.store.recordPath('aiReviews',review.id),JSON.stringify(review));await writeFile(f.store.recordPath('receipts',image.receipt.id),JSON.stringify(image.receipt));
   const legacy=await f.store.reviewData();assert.equal(legacy.summary.finalAIPass,false);assert.match(legacy.cells[0].aiReviews[0].staleReasons.join(),/protocol changed/);await assert.rejects(f.store.recordAI(f.review(cap,[image.receipt]),f.imageOptions),/not supplied/);
   const fresh=await f.store.provideImage({cellId:cap.cellId,...f.imageOptions});await f.store.recordAI(f.review(cap,[fresh.receipt]),f.imageOptions);assert.equal((await f.store.reviewData()).summary.finalAIPass,true);
 });

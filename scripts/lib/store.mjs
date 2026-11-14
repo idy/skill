@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, rename, readdir, copyFile, lstat, realpath, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, copyFile, lstat, realpath, rm } from 'node:fs/promises';
 import { resolve, join, relative, dirname, isAbsolute } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -8,25 +8,19 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { AI_REVIEW_PROTOCOL, check, object, text, id, list, choice, time, canonical, sha256, identity, validateProject, validateFeedback, staleReasons, imageSetHash } from './contracts.mjs';
 import { decodeImage, hashArtifact } from './media.mjs';
 import { transitionFindings } from './transitions.mjs';
+import { recordPath, readRecord, writeRecord, listRecords } from './records.mjs';
 const exec = promisify(execFile);
 const now = () => new Date().toISOString();
 const readJSON = async p => JSON.parse(await readFile(p, 'utf8'));
 const imageAssets = c => c.assets.filter(a => a.kind !== 'video');
-const safeName = s => id(s).replaceAll(':', '_');
 
 export class EvidenceStore {
   constructor(path = '.visual-acceptance') { this.root = resolve(path); }
   async state() { return readJSON(join(this.root, 'state.json')); }
-  async record(kind, recordId) { id(recordId); return readJSON(join(this.root, kind, `${safeName(recordId)}.json`)); }
-  async records(state, kind) { return Promise.all((state[kind] ?? []).map(v => this.record(kind, v))); }
-  async immutable(kind, value) {
-    id(value.id); const dir = join(this.root, kind); await mkdir(dir, { recursive: true, mode: 0o700 });
-    // Name collision is checked against full ID, including ':' vs '_'.
-    const path = join(dir, `${safeName(value.id)}.json`);
-    try { await writeFile(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 }); }
-    catch (error) { if (error.code !== 'EEXIST') throw error; check(canonical(await readJSON(path)) === canonical(value), `Immutable ${kind}/${value.id} already exists with different content`); }
-    return value;
-  }
+  recordPath(kind,recordId) { return recordPath(this.root,kind,recordId); }
+  async record(kind,recordId) { return readRecord(this.root,kind,recordId); }
+  async records(state,kind) { return Promise.all([...new Set(state[kind] ?? [])].map(v=>this.record(kind,v))); }
+  async immutable(kind,value) { return writeRecord(this.root,kind,value); }
   async transaction(fn, initializing = false) {
     await mkdir(this.root, { recursive: true, mode: 0o700 });
     const lock = join(this.root, '.lock'); let held = false;
@@ -238,7 +232,9 @@ export class EvidenceStore {
         return { ...r, stale: stale.length > 0, staleReasons: [...new Set(stale)] };
       });
       const humanReviews = batches.flatMap(b => b.edits.map((e, i) => ({ ...e, id: `${b.batchId}:${i}`, batchId: b.batchId, sourceId: b.sourceId, transport: b.transport, createdAt: b.submittedAt }))).filter(e => e.cellId === cell.id).map(r => {
-        const stale = staleReasons(r, capture, state.target, state.policy.revision);
+        // A missing-evidence opinion targets this spec/cell's explicit absence,
+        // not a build/runtime image. Arrival of a capture exits this special case.
+        const stale = r.captureId === null && !capture ? (r.specRev === state.specRev ? [] : ['spec revision changed']) : staleReasons(r, capture, state.target, state.policy.revision);
         if (blockers.length) stale.push('Evidence blocked or corrupt'); if (r.specRev !== state.specRev) stale.push('spec revision changed');
         return { ...r, stale: stale.length > 0, staleReasons: [...new Set(stale)] };
       });
@@ -296,8 +292,7 @@ export class EvidenceStore {
   async currentRun(state) {
     check(state.activeRunId, 'No active run; run-start first');
     const start = await this.record('runs', state.activeRunId);
-    const names = await readdir(join(this.root, 'runEvents')).catch(e => { if (e.code === 'ENOENT') return []; throw e; });
-    const events = (await Promise.all(names.map(n => readJSON(join(this.root,'runEvents',n))))).filter(e => e.runId === start.id).sort((a,b) => a.sequence - b.sequence);
+    const events = (await listRecords(this.root,'runEvents')).filter(e=>e.runId===start.id).sort((a,b)=>a.sequence-b.sequence);
     let round = 0;
     for (const event of events) { if (event.type === 'repair') round++; event.effectiveRound = round; }
     return { ...start, events, round, status: events.some(e => ['stop','finish'].includes(e.type)) ? 'stopped' : 'active', unresolved: events.filter(e => e.reason).map(e => e.reason) };

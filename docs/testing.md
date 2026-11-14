@@ -28,6 +28,14 @@ VA_REAL_BUNDLE="$PWD/browser-native-review" npm run test:browser
 
 The tests copy `VA_CORE_STORE` before writing automated opinions. The real server retry test intentionally fails dispatch after saving, restarts on the same loopback port with a new source/token, reloads the browser and verifies that the original batch body is accepted exactly once. It reports no Pi connection. The live host check below verifies actual delivery separately. `CHROME` and `PLAYWRIGHT_CORE` remain optional overrides for an existing installation; no temporary absolute install is required.
 
+For the missing-evidence human feedback regression (temporary synthetic store and real loopback/browser, no provider request):
+
+```sh
+node --test tests/integration/missing-feedback.browser.mjs
+```
+
+It checks formal blocked/n-a feedback after refresh and in a new browser without submitted-draft mirrors, preserves a separate undecided comment draft, and verifies that later capture/spec changes stale the original opinions without changing their bytes. `tests/identity-absence.test.mjs` covers all ten immutable record kinds, exact legacy IDs, colon/underscore/case portability, conflicting/duplicate layouts, phantom spec rejection and run-event budget deduplication.
+
 ## Opt-in actual Pi feedback check
 
 The probe uses the installed Pi SDK and its actual extension runtime, disk-backed session, browser autosave/explicit batch submission, exact duplicate JSON import and a fresh browser-exported JSON import. It never replaces `sendMessage`. The two feedback messages trigger at most two configured provider requests, with a 120-second overall abort timer, retries disabled and tools disabled for model responses. Credentials stay with Pi's normal model runtime and are not printed or copied. Every opinion is labelled `review-ui-browser-test`, and the expected next action is pending human review.
