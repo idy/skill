@@ -1,0 +1,16 @@
+{
+  "name": "idy-pi-skills",
+  "version": "0.1.0",
+  "description": "Pi skills collection with evidence-based visual acceptance for real apps",
+  "type": "module",
+  "keywords": ["pi-package", "pi", "skills", "visual-acceptance"],
+  "repository": {"type": "git", "url": "https://github.com/idy/skill.git"},
+  "engines": {"node": ">=20"},
+  "bin": {"visual-acceptance": "scripts/visual-acceptance.mjs"},
+  "files": ["README.md", "docs/", "schemas/", "scripts/", "extensions/", "skills/", "examples/"],
+  "pi": {"skills": ["./skills"], "extensions": ["./extensions/visual-acceptance.ts"]},
+  "scripts": {"test": "node --test tests/*.test.mjs", "check": "node --check scripts/visual-acceptance.mjs && node --check scripts/lib/store.mjs && node --check scripts/lib/server.mjs"},
+  "dependencies": {"jpeg-js": "^0.4.4", "pngjs": "^7.0.0"},
+  "peerDependencies": {"@earendil-works/pi-coding-agent": "*", "typebox": "*"},
+  "peerDependenciesMeta": {"@earendil-works/pi-coding-agent": {"optional": true}, "typebox": {"optional": true}}
+}
