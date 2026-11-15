@@ -1,0 +1,74 @@
+{
+  "name": "pi-visual-acceptance",
+  "version": "0.1.0",
+  "description": "Visual Acceptance for real apps: Device Hub evidence, versioned review matrix and Pi feedback",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "skills",
+    "visual-acceptance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/idy/skill.git",
+    "directory": "packages/visual-acceptance"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "visual-acceptance": "scripts/visual-acceptance.mjs"
+  },
+  "files": [
+    "README.md",
+    "docs/",
+    "schemas/visual-acceptance-v1.schema.json",
+    "scripts/visual-acceptance.mjs",
+    "scripts/validate-recording.mjs",
+    "scripts/lib/",
+    "extensions/visual-acceptance.ts",
+    "skills/visual-acceptance/",
+    "examples/device-hub-app/",
+    "!**/*.test.mjs",
+    "!skills/visual-acceptance/review/tests/"
+  ],
+  "pi": {
+    "skills": [
+      "./skills/visual-acceptance"
+    ],
+    "extensions": [
+      "./extensions/visual-acceptance.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs skills/visual-acceptance/review/tests/*.test.mjs skills/visual-acceptance/adapters/device-hub/*.test.mjs",
+    "test:browser": "node --test skills/visual-acceptance/review/tests/browser/review-ui.browser.mjs",
+    "browser:install": "playwright install chromium",
+    "check:schema": "node scripts/validate-recording.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "playwright": "1.65.1"
+  },
+  "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "typebox": {
+      "optional": true
+    }
+  }
+}

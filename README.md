@@ -1,41 +1,28 @@
-# Pi skills collection
+# Pi skills
 
-This public repository distributes multiple Pi skills as one installable package. Its first skill, **visual-acceptance**, reviews evidence from an actual running App through a user-selected Device Hub bridge. Humans and agents share a versioned HTML review matrix. It supports native apps and does not select a Web capture platform on your behalf.
+This public repository, [idy/skill](https://github.com/idy/skill), manages Pi skills in one source workspace. **Each skill has its own npm package, marketplace entry and installation.** The repository root is private and cannot be published as a collection package.
 
-Install the integration branch while its PR is under review (or replace the ref with an exact reviewed commit):
+| Skill | npm / marketplace package | Install | Invoke |
+| --- | --- | --- | --- |
+| [Visual Acceptance](packages/visual-acceptance/README.md) | `pi-visual-acceptance` | `pi install npm:pi-visual-acceptance` | `/skill:visual-acceptance` |
+
+Visual Acceptance reviews evidence from the actual running App through the user-selected Device Hub bridge. Humans and agents share a versioned HTML review matrix. Native App evidence, source/build identities and independent human decisions remain separate from the HTML review page.
+
+The independent package is prepared for its first `0.1.0` release. The npm installation command above becomes available after that release; this source change alone does not publish it. The former `idy-pi-skills` collection package was published in error. See the [release and migration plan](docs/package-migration.md) for its safe transition.
+
+Run `/reload` after installation in an existing Pi session, then `/skill:visual-acceptance`. To migrate an existing collection install, install the independent package and remove the old package declaration with `pi remove npm:idy-pi-skills` (use the exact old source shown by `pi list`, including a pinned version). Evidence stores and exported review pages belong to the project; retain them. Avoid leaving both packages enabled, which would register duplicate skill/tool names.
+
+The existing `pi install git:github.com/idy/skill` source remains a compatibility route. Its root Pi manifest forwards **only** to Visual Acceptance's exact skill directory and extension. It checks out this source repository, but adding another workspace never adds that skill to this entry. Prefer the independent npm package for a single skill installation.
+
+For local development with Node.js 20+:
 
 ```sh
-pi install git:github.com/idy/skill@feat/visual-acceptance-integration
-# Project-local alternative:
-pi install --local git:github.com/idy/skill@feat/visual-acceptance-integration
-```
-
-Run `/reload` in an existing Pi session, then `/skill:visual-acceptance`. The package declares its skills and a thin extension in the Pi manifest. Installing a Git package executes extension code with Pi's permissions; inspect the source first. A Git install is independent of npm publication or package-catalog discovery. This package has not been published to npm.
-
-Node.js 20+ runs the CLI independently of Pi:
-
-```sh
-npm ci --ignore-scripts --omit=dev --omit=peer
-node scripts/visual-acceptance.mjs help
+npm ci --ignore-scripts --omit=peer
 npm test
-npm pack --dry-run
+npm run check
+npm run check:schema
+npm run demo-export -- --out /absolute/path/to/new-review
+npm run pack:visual-acceptance -- --pack-destination /absolute/path/to/artifacts
 ```
 
-Open the shipped native demonstration without Xcode, a private store or a browser dependency:
-
-```sh
-node scripts/visual-acceptance.mjs demo-export --out ./trail-notes-review
-open ./trail-notes-review/index.html   # macOS; otherwise open this file in your browser
-```
-
-Use a new output directory. The page includes two iOS simulator configurations, empty/ready/error states and real loading transitions. It retains the seeded clipping defect, fixed source/builds, stale opinions, original images and video. Export verifies the original file hashes, recomputes decoded pixel fingerprints and applies the installed core's transition validation. Human acceptance is pending (`humanPass:0`). Enter your own reviewer name, review the matrix, then use **复制人审意见** to paste located feedback into Pi, or export JSON for the project's `visual_acceptance_feedback_import` tool when its evidence store is available. Static browser drafts stay in that browser profile; they do not automatically notify Pi.
-
-For a live project store, ask Pi to call `visual_acceptance_review` with its store path and open the returned loopback URL. Edits save to disk; **提交给 Pi** sends one explicit batch into that Pi session. CLI `serve` saves opinions without a connected Pi session. See [native reproduction](examples/device-hub-app/README.md), [recorded evidence](examples/device-hub-app/recorded-run/INDEX.md) and [reproducible development checks](docs/testing.md).
-
-The core provides immutable captures, actual source/artifact/runtime identities, image decoding and integrity checks, stale review detection, bounded review runs, single-image Pi tools, a loopback review server and deduplicated explicit feedback batches. The matrix and Device Hub adapter are separate package resources. See [shared contracts](docs/contracts.md), [workflow and command guide](docs/workflow.md), [core verification](docs/testing.md), [Device Hub guide](docs/device-hub.md) and [schema](schemas/visual-acceptance-v1.schema.json).
-
-App evidence must come from the real installed app on a truthfully labeled device/simulator. Fixtures may control IO while retaining production UI/state machines. Transition evidence includes real actions and ordered frames/video; a static end screenshot cannot establish smoothness. Each new image must be inspected by an image-capable agent. Image receipts record delivery sequencing, not cognition. A new capture/build/runtime/spec/image invalidates prior AI conclusions; human review history stays separate and receives stale warnings.
-
-A final AI pass requires current coverage of the whole matrix on the same target build/runtime/spec. Human acceptance is a separate result. Automated UI and feedback tests are not a demonstration of a real person's review. The recorded demonstration uses actual Device Hub collection and per-image agent inspection. Its scope, identities and limitations are in the evidence index; a real person's acceptance remains a separate pending step.
-
-Evidence stores default to `.visual-acceptance/` and are ignored by Git. Source snapshots, receipts and local draft files stay private. Only explicitly exported review data, safe provenance and evidence are intended for sharing. The browser stores drafts locally and the server persists edits on that machine; neither is a multiuser collaboration service.
+Each self-contained package lives under `packages/<skill>/` with its own manifest, runtime dependencies, CLI, skill resources, docs and tests. Package-relative commands in a skill's documentation run from that package directory. Use `npm run <command> --workspace=pi-visual-acceptance` to run a package command from the repository root. [Packaging verification](docs/packaging.md) includes runtime-only tarball installation and a sibling skill isolation check.
