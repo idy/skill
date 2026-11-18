@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writeBundle, cellIdFor, REVIEW_DIR } from '../support/fixture.mjs';
 import { startMockServer } from '../support/mock-review-server.mjs';
+import { buildCoreStore } from '../support/core-store.mjs';
 
 const PW = process.env.PLAYWRIGHT_CORE || 'playwright';
 const skip = false;
@@ -101,6 +102,217 @@ test('static: matrix layout, device columns, placeholders and fixture marking', 
   await shot(page, '01-static-matrix');
   assert.deepEqual(page.errors, []);
   await ctx.close();
+});
+
+// Regression for a user report: a device titled with a long simulation note
+// ("WebKit 1120×760 (main window normal size) — SIMULATION: …") stretched its
+// column to ~1500px around a ~155px preview and pushed the next column off
+// screen. Column width must follow the preview box only; long, spaceless or
+// localized labels/metadata wrap inside it and stay fully available.
+const LONG_DEVICES = {
+  'phone-a': { label: 'WebKit 1120×760 (main window normal size) — SIMULATION: real sample-desktop binary (--headless --preview) serving its production embedded UI, rendered by a headless Playwright browser at the sample window content size; not a native WKWebView window', platform: 'macos-webkit-headless' },
+  'tablet-b': { label: '平板横屏（主窗口最大化，系统缩放百分之一百二十五，模拟数据）android-emulator-sample-pixel-pro-xl-api-35-arm64-v8a-google-apis-playstore', platform: 'android-emulator-arm64-v8a-google-apis-x86_64-translation-layer' }
+};
+async function setZoom(page, z) {
+  await page.$eval('#matrix-zoom', (el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }, z);
+}
+function columnGeometry(page) {
+  return page.evaluate(() => {
+    const ths = [...document.querySelectorAll('#matrix-table thead th:not(.corner)')];
+    const rows = [...document.querySelectorAll('#matrix-table tbody tr:not(.group-row)')];
+    return ths.map((th, i) => {
+      const items = rows.map(r => r.children[i + 1] && r.children[i + 1].firstElementChild).filter(Boolean);
+      const label = th.querySelector('.col-text strong');
+      const lh = parseFloat(getComputedStyle(label).lineHeight);
+      return {
+        left: th.getBoundingClientRect().left, width: th.getBoundingClientRect().width,
+        content: Math.max(...items.map(el => el.getBoundingClientRect().width)),
+        thumbs: [...new Set(items.map(el => el.querySelector('.thumb')).filter(Boolean).map(t => (t.getBoundingClientRect().height / t.getBoundingClientRect().width).toFixed(2)))],
+        label: label.textContent, labelLines: label.getBoundingClientRect().height / lh,
+        overflowX: th.scrollWidth - th.clientWidth, title: th.getAttribute('title') || ''
+      };
+    });
+  });
+}
+
+test('static: long/spaceless/localized device labels do not widen columns beyond the preview (regression)', { skip }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'va-review-long-device-'));
+  writeBundle(dir, { round: 1, deviceOverrides: LONG_DEVICES });
+  for (const viewport of [{ width: 1920, height: 1000 }, { width: 900, height: 900 }]) {
+    const ctx = await browser.newContext({ viewport });
+    const page = await newPage(ctx, pathToFileURL(join(dir, 'index.html')).href);
+    const byZoom = {};
+    for (const z of [0.5, 1, 2.5]) {
+      await setZoom(page, z);
+      const cols = byZoom[z] = await columnGeometry(page);
+      assert.equal(cols.length, 3);
+      for (const c of cols) {
+        // th/td padding is 8px per side: the column is exactly as wide as its widest preview tile
+        assert.ok(c.width <= c.content + 16 + 1, `${viewport.width}px zoom ${z}: column ${c.width}px for ${c.content}px preview (${c.label.slice(0, 24)}…)`);
+        assert.ok(c.overflowX <= 1, 'header content stays inside its column');
+        assert.ok(c.labelLines <= 3.05, 'label is clamped, not a tall ribbon');
+        assert.ok(Object.values(LONG_DEVICES).some(d => d.label === c.label), 'full label kept in the DOM');
+        const dev = Object.values(LONG_DEVICES).find(d => d.label === c.label);
+        assert.ok(c.title.includes(dev.label) && c.title.includes(dev.platform), 'full label + platform in the header tooltip');
+      }
+      if (z === 1) assert.ok(cols[1].left < viewport.width, `second column visible at ${viewport.width}px (left ${cols[1].left})`);
+      await shot(page, `01b-long-device-labels-${viewport.width}-z${z}`);
+    }
+    // slider still drives column size, and portrait/landscape keep their own aspect ratios
+    assert.ok(byZoom[2.5][2].width > byZoom[1][2].width && byZoom[1][2].width >= byZoom[0.5][2].width);
+    assert.notDeepEqual(byZoom[1][0].thumbs, byZoom[1][1].thumbs);
+    // filters still work with the long labels; the full label is readable in the review view
+    await setZoom(page, 1);
+    await page.fill('#filter-text', 'WKWebView');
+    await page.waitForFunction(() => document.querySelectorAll('#matrix-table thead th:not(.corner)').length === 2 && document.querySelectorAll('.tile:not(.filtered-out)').length === 8);
+    await page.click('#btn-reset-filters');
+    await openCell(page, C.emptyPhone);
+    assert.equal(await page.textContent('#review .stage-head .dev'), LONG_DEVICES['phone-a'].label);
+    const overflow = await page.evaluate(() => ['.stage', '.panel'].map(sel => { const s = document.querySelector(sel); return s.scrollWidth - s.clientWidth; }));
+    assert.ok(overflow.every(x => x <= 1), `long label wraps in the review stage and panel (${overflow})`);
+    assert.deepEqual(page.errors, []);
+    await ctx.close();
+  }
+});
+
+// Clamped header metadata must be readable without hover or opening evidence,
+// even when the first cell is unlisted and filters hide other candidate cells.
+async function headerState(page) {
+  return page.evaluate(() => ({
+    widths: [...document.querySelectorAll('#matrix-table thead th:not(.corner)')].map(th => Math.round(th.getBoundingClientRect().width)),
+    filter: JSON.stringify(window.__vaReviewApp.filter),
+    drafts: JSON.stringify([...window.__vaReviewApp.drafts.entries()].sort()),
+    localDrafts: JSON.stringify(Object.keys(localStorage).filter(k => k.includes(':draft:')).sort().map(k => [k, localStorage.getItem(k)])),
+    queue: JSON.stringify(window.__vaReviewApp.queue), activeId: window.__vaReviewApp.activeId,
+    hash: location.hash, reviewHidden: document.getElementById('review').hidden
+  }));
+}
+async function headerScroll(page) {
+  return page.evaluate(() => { const s = document.querySelector('.matrix-scroll'); return [scrollX, scrollY, s.scrollLeft, s.scrollTop]; });
+}
+async function expectDeviceDialog(page, dev, label) {
+  await page.waitForSelector('#device-dialog[open]');
+  const d = await page.evaluate(() => {
+    const dlg = document.getElementById('device-dialog'), r = dlg.getBoundingClientRect(), body = dlg.querySelector('.dlg-body');
+    return { text: dlg.textContent, values: Object.fromEntries([...body.querySelectorAll('dt')].map(dt => [dt.textContent, dt.nextElementSibling.textContent])), left: r.left, right: r.right, vw: innerWidth, overflow: body.scrollWidth - body.clientWidth,
+      clamped: [...body.querySelectorAll('.device-full-label, dd')].some(el => getComputedStyle(el).webkitLineClamp !== 'none') };
+  });
+  assert.ok(d.text.includes(dev.label), `${label}: full label in dialog`);
+  assert.equal(d.values['平台'], dev.platform || '未声明', `${label}: full platform in dialog`);
+  assert.match(d.values['尺寸'], /\d+×\d+ px|尺寸未知/, `${label}: size in dialog`);
+  const orientation = dev.screen ? (dev.screen.width >= dev.screen.height ? 'landscape' : 'portrait') : dev.orientation;
+  if (orientation) assert.equal(d.values['方向'], orientation === 'landscape' ? '横屏' : '竖屏', `${label}: exact orientation`);
+  if (dev.screen) assert.ok(d.values['尺寸'].startsWith(`${dev.screen.width}×${dev.screen.height} px`), `${label}: exact declared pixel dimensions`);
+  assert.ok(d.left >= 0 && d.right <= d.vw + 0.5, `${label}: dialog inside the viewport (${d.left}..${d.right} of ${d.vw})`);
+  assert.ok(d.overflow <= 1 && !d.clamped, `${label}: full unbroken text wraps without clamping or horizontal overflow`);
+  assert.equal(await page.locator('#device-dialog footer .btn-primary').evaluate(el => el === document.activeElement), true, `${label}: close action receives focus`);
+}
+async function seedHeaderDraft(page, tag) {
+  await page.locator('.tile').first().click();
+  await page.waitForSelector('#review:not([hidden])');
+  await page.fill('#comment', `SYNTHETIC header regression draft: ${tag}; preserve this exact text.`);
+  await waitSaved(page);
+  await page.click('#btn-back-matrix');
+}
+async function checkHeaderDisclosure(page, devices, tag) {
+  const before = await headerState(page);
+  assert.notEqual(before.drafts, '[]', `${tag}: a real saved comment draft exists before disclosure`);
+  const heads = await page.$$eval('#matrix-table thead th:not(.corner)', ths => ths.map(th => { const b = th.querySelector('button.col-head'); return b ? { col: b.dataset.col, popup: b.getAttribute('aria-haspopup'), controls: b.getAttribute('aria-controls') } : null; }));
+  await page.focus('#matrix-zoom');
+  await page.keyboard.press('Tab');
+  const first = await page.evaluate(() => { const a = document.activeElement; return { tag: a.tagName, cls: a.className, col: a.dataset.col || null }; });
+  assert.ok(first.tag === 'BUTTON' && /col-head/.test(first.cls), `${tag}: Tab from the slider reaches a device header, got ${first.tag}.${first.cls}`);
+  assert.ok(heads.every(x => x && x.popup === 'dialog' && x.controls === 'device-dialog'), `${tag}: every header is a native dialog button`);
+  await shot(page, `01c-header-focus-${tag}`);
+  let scroll = await headerScroll(page);
+  await page.keyboard.press('Enter');
+  await expectDeviceDialog(page, devices[0], tag + ' Enter');
+  assert.deepEqual(await headerState(page), before, `${tag}: opening changes no widths/filter/draft/queue/review state`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: Enter keeps matrix and document scroll`);
+  // Both close controls remain in the native modal's keyboard focus order.
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), '关闭');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator('#device-dialog footer .btn-primary').evaluate(el => el === document.activeElement), true);
+  await shot(page, `01c-device-dialog-${tag}`);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.getElementById('device-dialog').open);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.col), first.col, `${tag}: Escape returns focus to the header`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: Escape keeps scroll`);
+  await page.keyboard.press('Tab');
+  const second = await page.evaluate(() => document.activeElement.dataset.col);
+  assert.equal(second, heads[1].col, `${tag}: Tab moves to the next header`);
+  scroll = await headerScroll(page);
+  await page.keyboard.press(' ');
+  await expectDeviceDialog(page, devices[1], tag + ' Space');
+  await page.click('#device-dialog footer .btn-primary');
+  await page.waitForFunction(() => !document.getElementById('device-dialog').open);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.col), second, `${tag}: close button returns focus`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: Space + close keep scroll`);
+  // Tap the final header after explicit horizontal scrolling. It must be
+  // reachable beside the sticky row heading, including at 390px viewport width.
+  const last = page.locator('#matrix-table thead .col-head').last();
+  await last.scrollIntoViewIfNeeded();
+  await page.locator('.matrix-scroll').evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  scroll = await headerScroll(page);
+  if (page.viewportSize().width === 390) assert.ok(scroll[2] > 0, `${tag}: narrow table really is horizontally scrolled`);
+  await last.tap();
+  await expectDeviceDialog(page, devices[heads.length - 1], tag + ' tap');
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: tap keeps scroll`);
+  await page.waitForTimeout(250); // allow the browser's transient tap highlight to clear before the screenshot
+  await shot(page, `01c-device-dialog-${tag}-tap`);
+  await page.tap('#device-dialog header button[aria-label="关闭"]');
+  await page.waitForFunction(() => !document.getElementById('device-dialog').open);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.col), heads.at(-1).col, `${tag}: touch close returns focus`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: touch close keeps scroll`);
+  assert.deepEqual(await headerState(page), before, `${tag}: disclosure preserves saved draft contents and all matrix state`);
+  assert.deepEqual(page.errors, []);
+}
+
+test('static: device header keyboard/touch disclosure with active missing filter and unlisted first cell', { skip }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'va-review-header-'));
+  writeBundle(dir, { round: 1, deviceOverrides: LONG_DEVICES, omitCellIds: [C.emptyTablet] });
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+    const ctx = await browser.newContext({ viewport, hasTouch: true });
+    try {
+      const page = await newPage(ctx, pathToFileURL(join(dir, 'index.html')).href);
+      await seedHeaderDraft(page, `static-${viewport.width}`);
+      await page.click('.preset:has-text("缺证据/阻塞")');
+      await page.waitForFunction(() => document.querySelectorAll('#matrix-table thead .col-head').length === 2);
+      const cols = await page.$$eval('#matrix-table thead th:not(.corner)', ths => ths.map(th => th.textContent));
+      assert.equal(cols.length, 2, 'active filter hides phone portrait');
+      assert.ok(cols[0].includes(LONG_DEVICES['phone-a'].label) && cols[0].includes('横屏') && cols[1].includes(LONG_DEVICES['tablet-b'].label));
+      assert.equal(await page.locator('#matrix-table tbody tr:not(.group-row)').first().locator('td').last().locator('.not-in-spec').count(), 1, 'tablet first cell is unlisted');
+      await checkHeaderDisclosure(page, [{ ...LONG_DEVICES['phone-a'], orientation: 'landscape' }, { ...LONG_DEVICES['tablet-b'], orientation: 'portrait' }], `static-${viewport.width}`);
+    } finally { await ctx.close(); }
+  }
+});
+
+test('core export + real loopback: shared device header disclosure preserves drafts, scroll and active filter', { skip }, async () => {
+  const devices = [
+    { id: 'desktop-sim', label: LONG_DEVICES['phone-a'].label, platform: 'macos-webkit-headless', screen: { width: 1120, height: 760 } },
+    { id: 'phone', label: 'Sample Phone', platform: 'ios-simulator', screen: { width: 1179, height: 2556 } },
+    { id: 'emu', label: '平板Tablet' + 'UnbrokenLabel'.repeat(18), platform: LONG_DEVICES['tablet-b'].platform, screen: { width: 1344, height: 2992 } }
+  ];
+  const core = await buildCoreStore({ devices, omit: [['home', 'desktop-sim']] });
+  const exported = join(core.dir, 'export');
+  await core.store.export(exported, REVIEW_DIR);
+  const srv = await core.serve();
+  try {
+    for (const [mode, url] of [['export', pathToFileURL(join(exported, 'index.html')).href], ['loopback', srv.url + '/']]) {
+      for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+        const ctx = await browser.newContext({ viewport, hasTouch: true });
+        try {
+          const page = await newPage(ctx, url);
+          assert.match(await page.textContent('#storage-badge'), mode === 'loopback' ? /本地服务保存/ : /仅此浏览器/);
+          await seedHeaderDraft(page, `${mode}-${viewport.width}`);
+          await page.click('.preset:has-text("人工未决")');
+          assert.equal(await page.locator('#matrix-table tbody tr:not(.group-row)').first().locator('td').first().locator('.not-in-spec').count(), 1, 'first column begins with an unlisted cell');
+          await checkHeaderDisclosure(page, devices, `${mode}-${viewport.width}`);
+        } finally { await ctx.close(); }
+      }
+    }
+  } finally { await srv.close(); }
 });
 
 test('static: filters by preset/facets and variant tabs', { skip }, async () => {

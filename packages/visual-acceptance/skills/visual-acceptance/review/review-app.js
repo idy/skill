@@ -433,6 +433,17 @@
     var s = col.size || (col.orientation === 'landscape' ? { w: 2340, h: 1080 } : { w: 1080, h: 2340 });
     return { w: Math.max(28, Math.round(s.w * scale)), h: Math.max(28, Math.round(s.h * scale)), known: !!col.size };
   }
+  // One width per column, derived only from the preview box (slider × pixel
+  // ratio). Header, tiles and placeholders all use it, so device labels and
+  // metadata wrap inside the column instead of widening it.
+  function columnWidth(b) { return Math.max(b.w + 10, 96); }
+  function columnTitle(col) {
+    return [col.device.label, M.orientationLabel(col.orientation), col.device.platform, columnSizeText(col)].filter(Boolean).join('\n');
+  }
+  function columnSizeParts(col) {
+    return col.size ? [col.size.w + '×' + col.size.h + ' px', col.sizeSource === 'spec' ? '' : '（截图）'].filter(Boolean) : ['尺寸未知'];
+  }
+  function columnSizeText(col) { return columnSizeParts(col).join(''); }
   function matrixScale() {
     var maxDim = 1;
     app.view.columns.forEach(function (c) { if (c.size) maxDim = Math.max(maxDim, c.size.w, c.size.h); });
@@ -467,13 +478,16 @@
     cols.forEach(function (col) {
       var b = columnBox(col, scale);
       var sil = Math.min(1, 30 / Math.max(b.w, b.h));
-      trh.appendChild(h('th', { scope: 'col', style: { 'min-width': Math.max(b.w + 10, 104) + 'px' } },
-        h('div', { class: 'col-head' },
+      // The clamped header is also the disclosure. Keep details in the existing
+      // dialog shell so keyboard/touch access never needs a tile or wider column.
+      trh.appendChild(h('th', { scope: 'col', title: columnTitle(col) },
+        h('button', { type: 'button', class: 'col-head', 'data-col': col.key, 'aria-haspopup': 'dialog', 'aria-controls': 'device-dialog', title: '查看完整设备说明',
+          style: { width: (columnWidth(b) + 8) + 'px' }, onclick: function () { openDeviceInfo(col); } },
           h('span', { class: 'col-silhouette' + (b.known ? '' : ' unknown'), style: { width: Math.round(b.w * sil) + 'px', height: Math.round(b.h * sil) + 'px' }, 'aria-hidden': 'true' }),
           h('span', { class: 'col-text' },
-            h('strong', { text: col.device.label }),
-            h('span', null, h('span', { class: 'orient', text: M.orientationLabel(col.orientation) }), ' ', col.device.platform || ''),
-            h('span', { text: col.size ? col.size.w + '×' + col.size.h + ' px' + (col.sizeSource === 'spec' ? '' : '（截图）') : '尺寸未知' })))));
+            h('strong', { class: 'col-label', text: col.device.label }),
+            h('span', { class: 'col-platform' }, h('span', { class: 'orient', text: M.orientationLabel(col.orientation) }), ' ', col.device.platform || ''),
+            h('span', { class: 'col-size' }, columnSizeParts(col).map(function (t) { return h('span', { text: t }); }))))));
     });
     table.appendChild(h('thead', null, trh));
     var tbody = h('tbody');
@@ -496,7 +510,7 @@
         rowCells.forEach(function (cell, ci) {
           var b = columnBox(cols[ci], scale);
           var td = h('td');
-          if (!cell) td.appendChild(h('div', { class: 'not-in-spec', style: { width: Math.max(b.w + 10, 96) + 'px', height: (b.h + 30) + 'px' }, text: '未列入 spec' }));
+          if (!cell) td.appendChild(h('div', { class: 'not-in-spec', style: { width: columnWidth(b) + 'px', height: (b.h + 30) + 'px' }, text: '未列入 spec' }));
           else td.appendChild(tileFor(cell, hsCache.get(cell.id), b, match.has(cell.id), rIdx, ci));
           tr.appendChild(td);
         });
@@ -512,13 +526,13 @@
       ['h-pending', '待审', '当前证据无人工决定'], ['h-reopen', '需复审', '旧版证据上有人工意见'], ['ev-gap', '过程不足', '过渡只有终态，未验证过程']].forEach(function (x) {
       l.appendChild(h('span', null, h('span', { class: 'chip ' + x[0], text: x[1] }), x[2]));
     });
-    l.appendChild(h('span', { text: '列宽按截图像素比例绘制；不同设备/方向不复用、不旋转图片。' }));
+    l.appendChild(h('span', { text: '列宽按截图像素比例绘制；不同设备/方向不复用、不旋转图片。点列头查看完整设备说明。' }));
   }
 
   function tileFor(cell, hs, box, matched, r, c) {
     var inQueue = app.queue && app.queue.ids.indexOf(cell.id) >= 0;
     var cls = 'tile' + (matched ? '' : ' filtered-out') + (inQueue ? ' in-queue' : '') + (M.isResolved(hs) ? ' resolved' : '') + (app.activeId === cell.id ? ' active' : '');
-    var tile = h('button', { type: 'button', class: cls, 'data-cell': cell.id, 'data-r': String(r), 'data-c': String(c), style: { width: Math.max(box.w + 10, 96) + 'px' },
+    var tile = h('button', { type: 'button', class: cls, 'data-cell': cell.id, 'data-r': String(r), 'data-c': String(c), style: { width: columnWidth(box) + 'px' },
       'aria-label': tileLabel(cell, hs), onclick: function () { openFromMatrix(cell.id); } });
     tile.appendChild(thumbFor(cell, box));
     tile.appendChild(metaChips(cell, hs));
@@ -1288,6 +1302,29 @@
     return d;
   }
 
+  function openDeviceInfo(col) {
+    var key = col.key;
+    var sizeNote = !col.size ? '' : col.sizeSource === 'spec' ? 'spec 声明' : '按截图像素推断';
+    var d = dialogShell('device-dialog', '设备说明', [
+      h('p', { class: 'device-full-label', text: col.device.label }),
+      h('dl', { class: 'kv' },
+        h('dt', { text: '方向' }), h('dd', { text: M.orientationLabel(col.orientation) }),
+        h('dt', { text: '平台' }), h('dd', { text: col.device.platform || '未声明' }),
+        h('dt', { text: '尺寸' }), h('dd', { text: col.size ? col.size.w + '×' + col.size.h + ' px' + (sizeNote ? '（' + sizeNote + '）' : '') : '尺寸未知' }),
+        h('dt', { text: '设备 ID' }), h('dd', null, h('code', { text: col.deviceId })))
+    ], [h('button', { type: 'button', class: 'btn btn-primary', onclick: function () { d.close(); } }, '关闭')]);
+    // The browser restores the original button on close. If a server refresh
+    // rebuilt the matrix while open, recover that same column without scrolling.
+    // A queued close event must not steal focus from a subsequent action/dialog.
+    d.addEventListener('close', function () {
+      var a = document.activeElement;
+      if (document.querySelector('dialog[open]') || (a && a !== document.body && !d.contains(a))) return;
+      var btn = Array.prototype.find.call(document.querySelectorAll('#matrix-table .col-head'), function (x) { return x.dataset.col === key; });
+      if (btn) btn.focus({ preventScroll: true });
+    }, { once: true });
+    var primary = d.querySelector('footer .btn-primary'); if (primary) primary.focus({ preventScroll: true });
+  }
+
   function showTextFallback(title, text, why) {
     var ta = h('textarea', { class: 'copy-area', readonly: true, 'aria-label': title });
     ta.value = text;
@@ -1507,7 +1544,7 @@
   // (local.save assigns rev = base + 1, which equals submitted.rev)
 
   function openHelp() {
-    var rows = [['1 / 2 / 3 / 4', '通过 / 需修改 / 阻塞 / 不适用（保存成功后进入队列下一项）'], [']  或  J', '队列下一项'], ['[  或  K', '队列上一项'], ['← / →', '过渡序列切换帧；原图中切换图片'], ['O', '打开原图'], ['C', '聚焦评论框'], ['Esc', '离开评论框 / 关闭对话框 / 返回矩阵'], ['/', '搜索'], ['方向键（矩阵中）', '在格子之间移动'], ['?', '本帮助']];
+    var rows = [['1 / 2 / 3 / 4', '通过 / 需修改 / 阻塞 / 不适用（保存成功后进入队列下一项）'], [']  或  J', '队列下一项'], ['[  或  K', '队列上一项'], ['← / →', '过渡序列切换帧；原图中切换图片'], ['O', '打开原图'], ['C', '聚焦评论框'], ['Esc', '离开评论框 / 关闭对话框 / 返回矩阵'], ['/', '搜索'], ['方向键（矩阵中）', '在格子之间移动'], ['Enter / Space（列头）', '查看完整设备说明'], ['?', '本帮助']];
     dialogShell('help-dialog', '键盘快捷键', [h('table', { class: 'help-table' }, h('tbody', null, rows.map(function (r) { return h('tr', null, h('td', null, h('kbd', { text: r[0] })), h('td', { text: r[1] })); }))),
       h('p', { class: 'muted', text: '在评论框中输入时，单键快捷键不生效。审核 UI 的截图只代表界面本身，不是 App 证据。' })], [h('button', { type: 'button', class: 'btn btn-primary', onclick: function () { $('help-dialog').close(); } }, '关闭')]);
   }

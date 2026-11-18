@@ -35,7 +35,7 @@ ${sheetEl}
 }
 
 /** Build fixture view model (contract GET /api/review shape) + evidence files. */
-export function buildFixture({ round = 1 } = {}) {
+export function buildFixture({ round = 1, deviceOverrides = {} } = {}) {
   const files = new Map();
   function asset(id, kind, opts, extra = {}) {
     const body = svg(opts);
@@ -60,7 +60,7 @@ export function buildFixture({ round = 1 } = {}) {
     devices: [
       { id: 'phone-a', label: 'Phone A (fixture)', platform: 'ios' },
       { id: 'tablet-b', label: 'Tablet B (fixture)', platform: 'android', screen: { width: 1600, height: 2560 } }
-    ],
+    ].map(d => ({ ...d, ...(deviceOverrides[d.id] || {}) })),
     variants: [
       { id: 'default', label: '默认', language: 'zh-Hans', theme: 'light', fontScale: 1 },
       { id: 'dark', label: '深色', language: 'zh-Hans', theme: 'dark', fontScale: 1 }
@@ -172,8 +172,10 @@ export function buildFixture({ round = 1 } = {}) {
 }
 
 /** Write a static bundle like core `export`: UI files + review.json + review-data.js + evidence/. */
-export function writeBundle(outDir, { round = 1, withDataJs = true } = {}) {
-  const { view, files } = buildFixture({ round });
+export function writeBundle(outDir, { round = 1, withDataJs = true, deviceOverrides, omitCellIds = [] } = {}) {
+  const { view, files } = buildFixture({ round, deviceOverrides });
+  view.spec.cells = view.spec.cells.filter(c => !omitCellIds.includes(c.id));
+  view.cells = view.cells.filter(c => !omitCellIds.includes(c.id));
   mkdirSync(join(outDir, 'evidence'), { recursive: true });
   for (const f of UI_FILES) copyFileSync(join(REVIEW_DIR, f), join(outDir, f));
   for (const [p, body] of files) writeFileSync(join(outDir, p), body);
