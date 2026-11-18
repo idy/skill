@@ -103,6 +103,77 @@ test('static: matrix layout, device columns, placeholders and fixture marking', 
   await ctx.close();
 });
 
+// Regression for a user report: a device titled with a long simulation note
+// ("WebKit 1120×760 (main window normal size) — SIMULATION: …") stretched its
+// column to ~1500px around a ~155px preview and pushed the next column off
+// screen. Column width must follow the preview box only; long, spaceless or
+// localized labels/metadata wrap inside it and stay fully available.
+const LONG_DEVICES = {
+  'phone-a': { label: 'WebKit 1120×760 (main window normal size) — SIMULATION: real sample-desktop binary (--headless --preview) serving its production embedded UI, rendered by a headless Playwright browser at the sample window content size; not a native WKWebView window', platform: 'macos-webkit-headless' },
+  'tablet-b': { label: '平板横屏（主窗口最大化，系统缩放百分之一百二十五，模拟数据）android-emulator-sample-pixel-pro-xl-api-35-arm64-v8a-google-apis-playstore', platform: 'android-emulator-arm64-v8a-google-apis-x86_64-translation-layer' }
+};
+async function setZoom(page, z) {
+  await page.$eval('#matrix-zoom', (el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }, z);
+}
+function columnGeometry(page) {
+  return page.evaluate(() => {
+    const ths = [...document.querySelectorAll('#matrix-table thead th:not(.corner)')];
+    const rows = [...document.querySelectorAll('#matrix-table tbody tr:not(.group-row)')];
+    return ths.map((th, i) => {
+      const items = rows.map(r => r.children[i + 1] && r.children[i + 1].firstElementChild).filter(Boolean);
+      const label = th.querySelector('.col-text strong');
+      const lh = parseFloat(getComputedStyle(label).lineHeight);
+      return {
+        left: th.getBoundingClientRect().left, width: th.getBoundingClientRect().width,
+        content: Math.max(...items.map(el => el.getBoundingClientRect().width)),
+        thumbs: [...new Set(items.map(el => el.querySelector('.thumb')).filter(Boolean).map(t => (t.getBoundingClientRect().height / t.getBoundingClientRect().width).toFixed(2)))],
+        label: label.textContent, labelLines: label.getBoundingClientRect().height / lh,
+        overflowX: th.scrollWidth - th.clientWidth, title: th.getAttribute('title') || ''
+      };
+    });
+  });
+}
+
+test('static: long/spaceless/localized device labels do not widen columns beyond the preview (regression)', { skip }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'va-review-long-device-'));
+  writeBundle(dir, { round: 1, deviceOverrides: LONG_DEVICES });
+  for (const viewport of [{ width: 1920, height: 1000 }, { width: 900, height: 900 }]) {
+    const ctx = await browser.newContext({ viewport });
+    const page = await newPage(ctx, pathToFileURL(join(dir, 'index.html')).href);
+    const byZoom = {};
+    for (const z of [0.5, 1, 2.5]) {
+      await setZoom(page, z);
+      const cols = byZoom[z] = await columnGeometry(page);
+      assert.equal(cols.length, 3);
+      for (const c of cols) {
+        // th/td padding is 8px per side: the column is exactly as wide as its widest preview tile
+        assert.ok(c.width <= c.content + 16 + 1, `${viewport.width}px zoom ${z}: column ${c.width}px for ${c.content}px preview (${c.label.slice(0, 24)}…)`);
+        assert.ok(c.overflowX <= 1, 'header content stays inside its column');
+        assert.ok(c.labelLines <= 3.05, 'label is clamped, not a tall ribbon');
+        assert.ok(Object.values(LONG_DEVICES).some(d => d.label === c.label), 'full label kept in the DOM');
+        const dev = Object.values(LONG_DEVICES).find(d => d.label === c.label);
+        assert.ok(c.title.includes(dev.label) && c.title.includes(dev.platform), 'full label + platform in the header tooltip');
+      }
+      if (z === 1) assert.ok(cols[1].left < viewport.width, `second column visible at ${viewport.width}px (left ${cols[1].left})`);
+      await shot(page, `01b-long-device-labels-${viewport.width}-z${z}`);
+    }
+    // slider still drives column size, and portrait/landscape keep their own aspect ratios
+    assert.ok(byZoom[2.5][2].width > byZoom[1][2].width && byZoom[1][2].width >= byZoom[0.5][2].width);
+    assert.notDeepEqual(byZoom[1][0].thumbs, byZoom[1][1].thumbs);
+    // filters still work with the long labels; the full label is readable in the review view
+    await setZoom(page, 1);
+    await page.fill('#filter-text', 'WKWebView');
+    await page.waitForFunction(() => document.querySelectorAll('#matrix-table thead th:not(.corner)').length === 2 && document.querySelectorAll('.tile:not(.filtered-out)').length === 8);
+    await page.click('#btn-reset-filters');
+    await openCell(page, C.emptyPhone);
+    assert.equal(await page.textContent('#review .stage-head .dev'), LONG_DEVICES['phone-a'].label);
+    const overflow = await page.evaluate(() => ['.stage', '.panel'].map(sel => { const s = document.querySelector(sel); return s.scrollWidth - s.clientWidth; }));
+    assert.ok(overflow.every(x => x <= 1), `long label wraps in the review stage and panel (${overflow})`);
+    assert.deepEqual(page.errors, []);
+    await ctx.close();
+  }
+});
+
 test('static: filters by preset/facets and variant tabs', { skip }, async () => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await newPage(ctx, pathToFileURL(join(bundle, 'index.html')).href);

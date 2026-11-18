@@ -433,6 +433,17 @@
     var s = col.size || (col.orientation === 'landscape' ? { w: 2340, h: 1080 } : { w: 1080, h: 2340 });
     return { w: Math.max(28, Math.round(s.w * scale)), h: Math.max(28, Math.round(s.h * scale)), known: !!col.size };
   }
+  // One width per column, derived only from the preview box (slider × pixel
+  // ratio). Header, tiles and placeholders all use it, so device labels and
+  // metadata wrap inside the column instead of widening it.
+  function columnWidth(b) { return Math.max(b.w + 10, 96); }
+  function columnTitle(col) {
+    return [col.device.label, M.orientationLabel(col.orientation), col.device.platform, columnSizeText(col)].filter(Boolean).join('\n');
+  }
+  function columnSizeParts(col) {
+    return col.size ? [col.size.w + '×' + col.size.h + ' px', col.sizeSource === 'spec' ? '' : '（截图）'].filter(Boolean) : ['尺寸未知'];
+  }
+  function columnSizeText(col) { return columnSizeParts(col).join(''); }
   function matrixScale() {
     var maxDim = 1;
     app.view.columns.forEach(function (c) { if (c.size) maxDim = Math.max(maxDim, c.size.w, c.size.h); });
@@ -467,13 +478,13 @@
     cols.forEach(function (col) {
       var b = columnBox(col, scale);
       var sil = Math.min(1, 30 / Math.max(b.w, b.h));
-      trh.appendChild(h('th', { scope: 'col', style: { 'min-width': Math.max(b.w + 10, 104) + 'px' } },
-        h('div', { class: 'col-head' },
+      trh.appendChild(h('th', { scope: 'col', title: columnTitle(col) },
+        h('div', { class: 'col-head', style: { width: columnWidth(b) + 'px' } },
           h('span', { class: 'col-silhouette' + (b.known ? '' : ' unknown'), style: { width: Math.round(b.w * sil) + 'px', height: Math.round(b.h * sil) + 'px' }, 'aria-hidden': 'true' }),
           h('span', { class: 'col-text' },
-            h('strong', { text: col.device.label }),
-            h('span', null, h('span', { class: 'orient', text: M.orientationLabel(col.orientation) }), ' ', col.device.platform || ''),
-            h('span', { text: col.size ? col.size.w + '×' + col.size.h + ' px' + (col.sizeSource === 'spec' ? '' : '（截图）') : '尺寸未知' })))));
+            h('strong', { class: 'col-label', text: col.device.label }),
+            h('span', { class: 'col-platform' }, h('span', { class: 'orient', text: M.orientationLabel(col.orientation) }), ' ', col.device.platform || ''),
+            h('span', { class: 'col-size' }, columnSizeParts(col).map(function (t) { return h('span', { text: t }); }))))));
     });
     table.appendChild(h('thead', null, trh));
     var tbody = h('tbody');
@@ -496,7 +507,7 @@
         rowCells.forEach(function (cell, ci) {
           var b = columnBox(cols[ci], scale);
           var td = h('td');
-          if (!cell) td.appendChild(h('div', { class: 'not-in-spec', style: { width: Math.max(b.w + 10, 96) + 'px', height: (b.h + 30) + 'px' }, text: '未列入 spec' }));
+          if (!cell) td.appendChild(h('div', { class: 'not-in-spec', style: { width: columnWidth(b) + 'px', height: (b.h + 30) + 'px' }, text: '未列入 spec' }));
           else td.appendChild(tileFor(cell, hsCache.get(cell.id), b, match.has(cell.id), rIdx, ci));
           tr.appendChild(td);
         });
@@ -518,7 +529,7 @@
   function tileFor(cell, hs, box, matched, r, c) {
     var inQueue = app.queue && app.queue.ids.indexOf(cell.id) >= 0;
     var cls = 'tile' + (matched ? '' : ' filtered-out') + (inQueue ? ' in-queue' : '') + (M.isResolved(hs) ? ' resolved' : '') + (app.activeId === cell.id ? ' active' : '');
-    var tile = h('button', { type: 'button', class: cls, 'data-cell': cell.id, 'data-r': String(r), 'data-c': String(c), style: { width: Math.max(box.w + 10, 96) + 'px' },
+    var tile = h('button', { type: 'button', class: cls, 'data-cell': cell.id, 'data-r': String(r), 'data-c': String(c), style: { width: columnWidth(box) + 'px' },
       'aria-label': tileLabel(cell, hs), onclick: function () { openFromMatrix(cell.id); } });
     tile.appendChild(thumbFor(cell, box));
     tile.appendChild(metaChips(cell, hs));

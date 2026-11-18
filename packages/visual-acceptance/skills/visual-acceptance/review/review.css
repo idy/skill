@@ -146,12 +146,19 @@ kbd { display: inline-block; min-width: 18px; padding: 0 4px; border: 1px solid 
 .matrix th, .matrix td { vertical-align: top; }
 .matrix thead th { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 8px 8px; border-bottom: 1px solid var(--line-strong); text-align: left; font-weight: 500; }
 .matrix thead th.corner { left: 0; z-index: 6; min-width: 200px; font-size: 12px; color: var(--muted); vertical-align: bottom; }
-.col-head { display: flex; gap: 8px; align-items: flex-end; }
+/* Column width comes from the preview box (inline width on .col-head); text
+   wraps/clamps inside it so long or spaceless device labels never widen a column.
+   The full label stays in the DOM (screen readers) and in the th title.
+   Narrow columns stack the silhouette above the text instead of squeezing it. */
+.col-head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-end; }
 .col-silhouette { flex: none; border: 1.5px solid var(--ink-2); border-radius: 3px; background: var(--surface); }
 .col-silhouette.unknown { border-style: dashed; border-color: var(--muted); }
-.col-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.col-text strong { font-size: 13px; white-space: nowrap; }
-.col-text span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.col-text { display: flex; flex-direction: column; flex: 1 1 88px; min-width: 0; line-height: 1.25; }
+.col-text .col-label { font-size: 13px; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.col-text .col-platform, .col-text .col-size { font-size: 11px; color: var(--muted); }
+.col-text .col-platform { overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.col-text .col-size { overflow-wrap: anywhere; }
+.col-text .col-size > span { display: inline-block; max-width: 100%; }
 .orient { display: inline-block; padding: 0 5px; border-radius: 3px; background: var(--sunken); color: var(--ink-2); font-size: 11px; }
 .matrix tbody th.row-head { position: sticky; left: 0; z-index: 3; background: var(--bg); padding: 10px 12px 10px 0; text-align: left; font-weight: 500; min-width: 200px; max-width: 260px; border-bottom: 1px solid var(--line); }
 .row-head .row-label { font-weight: 600; }
@@ -221,7 +228,7 @@ kbd { display: inline-block; min-width: 18px; padding: 0 4px; border: 1px solid 
 .panel { overflow-y: auto; border-left: 1px solid var(--line); background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 
 .stage-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
-.stage-head .dev { font-weight: 600; }
+.stage-head .dev { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .shot-frame { position: relative; display: inline-block; border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px; background: var(--surface); box-shadow: var(--shadow); max-width: 100%; }
 .shot-frame button.shot { display: block; padding: 0; border: 0; background: none; cursor: zoom-in; }
@@ -270,6 +277,7 @@ video.evidence-video { max-width: 100%; max-height: 60vh; border-radius: 8px; ba
 .panel section { display: flex; flex-direction: column; gap: 6px; }
 .panel .sep { border-top: 1px solid var(--line); }
 .title-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.title-chips .chip { height: auto; min-height: 18px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .cell-id { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
 .cell-id code { user-select: all; }
 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; font-size: 12px; }
