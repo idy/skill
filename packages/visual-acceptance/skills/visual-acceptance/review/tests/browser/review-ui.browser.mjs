@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writeBundle, cellIdFor, REVIEW_DIR } from '../support/fixture.mjs';
 import { startMockServer } from '../support/mock-review-server.mjs';
+import { buildCoreStore } from '../support/core-store.mjs';
 
 const PW = process.env.PLAYWRIGHT_CORE || 'playwright';
 const skip = false;
@@ -172,6 +173,146 @@ test('static: long/spaceless/localized device labels do not widen columns beyond
     assert.deepEqual(page.errors, []);
     await ctx.close();
   }
+});
+
+// Clamped header metadata must be readable without hover or opening evidence,
+// even when the first cell is unlisted and filters hide other candidate cells.
+async function headerState(page) {
+  return page.evaluate(() => ({
+    widths: [...document.querySelectorAll('#matrix-table thead th:not(.corner)')].map(th => Math.round(th.getBoundingClientRect().width)),
+    filter: JSON.stringify(window.__vaReviewApp.filter),
+    drafts: JSON.stringify([...window.__vaReviewApp.drafts.entries()].sort()),
+    localDrafts: JSON.stringify(Object.keys(localStorage).filter(k => k.includes(':draft:')).sort().map(k => [k, localStorage.getItem(k)])),
+    queue: JSON.stringify(window.__vaReviewApp.queue), activeId: window.__vaReviewApp.activeId,
+    hash: location.hash, reviewHidden: document.getElementById('review').hidden
+  }));
+}
+async function headerScroll(page) {
+  return page.evaluate(() => { const s = document.querySelector('.matrix-scroll'); return [scrollX, scrollY, s.scrollLeft, s.scrollTop]; });
+}
+async function expectDeviceDialog(page, dev, label) {
+  await page.waitForSelector('#device-dialog[open]');
+  const d = await page.evaluate(() => {
+    const dlg = document.getElementById('device-dialog'), r = dlg.getBoundingClientRect(), body = dlg.querySelector('.dlg-body');
+    return { text: dlg.textContent, values: Object.fromEntries([...body.querySelectorAll('dt')].map(dt => [dt.textContent, dt.nextElementSibling.textContent])), left: r.left, right: r.right, vw: innerWidth, overflow: body.scrollWidth - body.clientWidth,
+      clamped: [...body.querySelectorAll('.device-full-label, dd')].some(el => getComputedStyle(el).webkitLineClamp !== 'none') };
+  });
+  assert.ok(d.text.includes(dev.label), `${label}: full label in dialog`);
+  assert.equal(d.values['平台'], dev.platform || '未声明', `${label}: full platform in dialog`);
+  assert.match(d.values['尺寸'], /\d+×\d+ px|尺寸未知/, `${label}: size in dialog`);
+  const orientation = dev.screen ? (dev.screen.width >= dev.screen.height ? 'landscape' : 'portrait') : dev.orientation;
+  if (orientation) assert.equal(d.values['方向'], orientation === 'landscape' ? '横屏' : '竖屏', `${label}: exact orientation`);
+  if (dev.screen) assert.ok(d.values['尺寸'].startsWith(`${dev.screen.width}×${dev.screen.height} px`), `${label}: exact declared pixel dimensions`);
+  assert.ok(d.left >= 0 && d.right <= d.vw + 0.5, `${label}: dialog inside the viewport (${d.left}..${d.right} of ${d.vw})`);
+  assert.ok(d.overflow <= 1 && !d.clamped, `${label}: full unbroken text wraps without clamping or horizontal overflow`);
+  assert.equal(await page.locator('#device-dialog footer .btn-primary').evaluate(el => el === document.activeElement), true, `${label}: close action receives focus`);
+}
+async function seedHeaderDraft(page, tag) {
+  await page.locator('.tile').first().click();
+  await page.waitForSelector('#review:not([hidden])');
+  await page.fill('#comment', `SYNTHETIC header regression draft: ${tag}; preserve this exact text.`);
+  await waitSaved(page);
+  await page.click('#btn-back-matrix');
+}
+async function checkHeaderDisclosure(page, devices, tag) {
+  const before = await headerState(page);
+  assert.notEqual(before.drafts, '[]', `${tag}: a real saved comment draft exists before disclosure`);
+  const heads = await page.$$eval('#matrix-table thead th:not(.corner)', ths => ths.map(th => { const b = th.querySelector('button.col-head'); return b ? { col: b.dataset.col, popup: b.getAttribute('aria-haspopup'), controls: b.getAttribute('aria-controls') } : null; }));
+  await page.focus('#matrix-zoom');
+  await page.keyboard.press('Tab');
+  const first = await page.evaluate(() => { const a = document.activeElement; return { tag: a.tagName, cls: a.className, col: a.dataset.col || null }; });
+  assert.ok(first.tag === 'BUTTON' && /col-head/.test(first.cls), `${tag}: Tab from the slider reaches a device header, got ${first.tag}.${first.cls}`);
+  assert.ok(heads.every(x => x && x.popup === 'dialog' && x.controls === 'device-dialog'), `${tag}: every header is a native dialog button`);
+  await shot(page, `01c-header-focus-${tag}`);
+  let scroll = await headerScroll(page);
+  await page.keyboard.press('Enter');
+  await expectDeviceDialog(page, devices[0], tag + ' Enter');
+  assert.deepEqual(await headerState(page), before, `${tag}: opening changes no widths/filter/draft/queue/review state`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: Enter keeps matrix and document scroll`);
+  // Both close controls remain in the native modal's keyboard focus order.
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), '关闭');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator('#device-dialog footer .btn-primary').evaluate(el => el === document.activeElement), true);
+  await shot(page, `01c-device-dialog-${tag}`);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.getElementById('device-dialog').open);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.col), first.col, `${tag}: Escape returns focus to the header`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: Escape keeps scroll`);
+  await page.keyboard.press('Tab');
+  const second = await page.evaluate(() => document.activeElement.dataset.col);
+  assert.equal(second, heads[1].col, `${tag}: Tab moves to the next header`);
+  scroll = await headerScroll(page);
+  await page.keyboard.press(' ');
+  await expectDeviceDialog(page, devices[1], tag + ' Space');
+  await page.click('#device-dialog footer .btn-primary');
+  await page.waitForFunction(() => !document.getElementById('device-dialog').open);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.col), second, `${tag}: close button returns focus`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: Space + close keep scroll`);
+  // Tap the final header after explicit horizontal scrolling. It must be
+  // reachable beside the sticky row heading, including at 390px viewport width.
+  const last = page.locator('#matrix-table thead .col-head').last();
+  await last.scrollIntoViewIfNeeded();
+  await page.locator('.matrix-scroll').evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  scroll = await headerScroll(page);
+  if (page.viewportSize().width === 390) assert.ok(scroll[2] > 0, `${tag}: narrow table really is horizontally scrolled`);
+  await last.tap();
+  await expectDeviceDialog(page, devices[heads.length - 1], tag + ' tap');
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: tap keeps scroll`);
+  await page.waitForTimeout(250); // allow the browser's transient tap highlight to clear before the screenshot
+  await shot(page, `01c-device-dialog-${tag}-tap`);
+  await page.tap('#device-dialog header button[aria-label="关闭"]');
+  await page.waitForFunction(() => !document.getElementById('device-dialog').open);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.col), heads.at(-1).col, `${tag}: touch close returns focus`);
+  assert.deepEqual(await headerScroll(page), scroll, `${tag}: touch close keeps scroll`);
+  assert.deepEqual(await headerState(page), before, `${tag}: disclosure preserves saved draft contents and all matrix state`);
+  assert.deepEqual(page.errors, []);
+}
+
+test('static: device header keyboard/touch disclosure with active missing filter and unlisted first cell', { skip }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'va-review-header-'));
+  writeBundle(dir, { round: 1, deviceOverrides: LONG_DEVICES, omitCellIds: [C.emptyTablet] });
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+    const ctx = await browser.newContext({ viewport, hasTouch: true });
+    try {
+      const page = await newPage(ctx, pathToFileURL(join(dir, 'index.html')).href);
+      await seedHeaderDraft(page, `static-${viewport.width}`);
+      await page.click('.preset:has-text("缺证据/阻塞")');
+      await page.waitForFunction(() => document.querySelectorAll('#matrix-table thead .col-head').length === 2);
+      const cols = await page.$$eval('#matrix-table thead th:not(.corner)', ths => ths.map(th => th.textContent));
+      assert.equal(cols.length, 2, 'active filter hides phone portrait');
+      assert.ok(cols[0].includes(LONG_DEVICES['phone-a'].label) && cols[0].includes('横屏') && cols[1].includes(LONG_DEVICES['tablet-b'].label));
+      assert.equal(await page.locator('#matrix-table tbody tr:not(.group-row)').first().locator('td').last().locator('.not-in-spec').count(), 1, 'tablet first cell is unlisted');
+      await checkHeaderDisclosure(page, [{ ...LONG_DEVICES['phone-a'], orientation: 'landscape' }, { ...LONG_DEVICES['tablet-b'], orientation: 'portrait' }], `static-${viewport.width}`);
+    } finally { await ctx.close(); }
+  }
+});
+
+test('core export + real loopback: shared device header disclosure preserves drafts, scroll and active filter', { skip }, async () => {
+  const devices = [
+    { id: 'desktop-sim', label: LONG_DEVICES['phone-a'].label, platform: 'macos-webkit-headless', screen: { width: 1120, height: 760 } },
+    { id: 'phone', label: 'Sample Phone', platform: 'ios-simulator', screen: { width: 1179, height: 2556 } },
+    { id: 'emu', label: '平板Tablet' + 'UnbrokenLabel'.repeat(18), platform: LONG_DEVICES['tablet-b'].platform, screen: { width: 1344, height: 2992 } }
+  ];
+  const core = await buildCoreStore({ devices, omit: [['home', 'desktop-sim']] });
+  const exported = join(core.dir, 'export');
+  await core.store.export(exported, REVIEW_DIR);
+  const srv = await core.serve();
+  try {
+    for (const [mode, url] of [['export', pathToFileURL(join(exported, 'index.html')).href], ['loopback', srv.url + '/']]) {
+      for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+        const ctx = await browser.newContext({ viewport, hasTouch: true });
+        try {
+          const page = await newPage(ctx, url);
+          assert.match(await page.textContent('#storage-badge'), mode === 'loopback' ? /本地服务保存/ : /仅此浏览器/);
+          await seedHeaderDraft(page, `${mode}-${viewport.width}`);
+          await page.click('.preset:has-text("人工未决")');
+          assert.equal(await page.locator('#matrix-table tbody tr:not(.group-row)').first().locator('td').first().locator('.not-in-spec').count(), 1, 'first column begins with an unlisted cell');
+          await checkHeaderDisclosure(page, devices, `${mode}-${viewport.width}`);
+        } finally { await ctx.close(); }
+      }
+    }
+  } finally { await srv.close(); }
 });
 
 test('static: filters by preset/facets and variant tabs', { skip }, async () => {

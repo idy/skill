@@ -172,8 +172,10 @@ export function buildFixture({ round = 1, deviceOverrides = {} } = {}) {
 }
 
 /** Write a static bundle like core `export`: UI files + review.json + review-data.js + evidence/. */
-export function writeBundle(outDir, { round = 1, withDataJs = true, deviceOverrides } = {}) {
+export function writeBundle(outDir, { round = 1, withDataJs = true, deviceOverrides, omitCellIds = [] } = {}) {
   const { view, files } = buildFixture({ round, deviceOverrides });
+  view.spec.cells = view.spec.cells.filter(c => !omitCellIds.includes(c.id));
+  view.cells = view.cells.filter(c => !omitCellIds.includes(c.id));
   mkdirSync(join(outDir, 'evidence'), { recursive: true });
   for (const f of UI_FILES) copyFileSync(join(REVIEW_DIR, f), join(outDir, f));
   for (const [p, body] of files) writeFileSync(join(outDir, p), body);

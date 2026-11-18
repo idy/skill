@@ -149,8 +149,14 @@ kbd { display: inline-block; min-width: 18px; padding: 0 4px; border: 1px solid 
 /* Column width comes from the preview box (inline width on .col-head); text
    wraps/clamps inside it so long or spaceless device labels never widen a column.
    The full label stays in the DOM (screen readers) and in the th title.
-   Narrow columns stack the silhouette above the text instead of squeezing it. */
-.col-head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-end; }
+   Narrow columns stack the silhouette above the text instead of squeezing it.
+   Dotted labels signal the device disclosure. Padding is cancelled by the
+   negative margin so the button keeps the preview-derived column width. */
+.col-head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-end; min-height: 44px; margin: -4px; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.col-head:hover { background: var(--sunken); }
+.col-head:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+.col-head .col-label { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+.col-head:hover .col-label { text-decoration-color: var(--ink-2); }
 .col-silhouette { flex: none; border: 1.5px solid var(--ink-2); border-radius: 3px; background: var(--surface); }
 .col-silhouette.unknown { border-style: dashed; border-color: var(--muted); }
 .col-text { display: flex; flex-direction: column; flex: 1 1 88px; min-width: 0; line-height: 1.25; }
@@ -347,6 +353,8 @@ details.evidence-details > summary { cursor: pointer; font-weight: 600; font-siz
 dialog { border: 1px solid var(--line-strong); border-radius: 12px; padding: 0; background: var(--surface); color: var(--ink); box-shadow: 0 10px 40px rgba(0,0,0,.3); }
 dialog::backdrop { background: rgba(10, 14, 24, .55); }
 .dialog { width: min(720px, 94vw); max-height: 88vh; }
+.dialog.dialog-compact { width: min(520px, 94vw); }
+.device-full-label { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 .dialog .dlg { display: flex; flex-direction: column; max-height: 88vh; }
 .dialog header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .dialog .dlg-body { padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -379,5 +387,15 @@ dialog::backdrop { background: rgba(10, 14, 24, .55); }
   .layout { grid-template-columns: 220px minmax(0, 1fr); height: auto; }
   .review-body { grid-template-columns: 1fr; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
+}
+/* At phone widths the sidebar plus 200px sticky row heading hid every device
+   header, even after horizontal scrolling. Keep the matrix and its headers
+   reachable by stacking the sidebar and bounding the sticky row heading. */
+@media (max-width: 640px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--line); max-height: 60vh; }
+  .matrix-scroll { padding: 0 8px 24px; }
+  .matrix thead th.corner, .matrix tbody th.row-head { min-width: 96px; max-width: 34vw; }
+  .matrix tbody th.row-head { padding-inline-end: 8px; overflow-wrap: anywhere; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
