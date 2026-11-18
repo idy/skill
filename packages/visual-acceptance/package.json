@@ -1,6 +1,6 @@
 {
   "name": "pi-visual-acceptance",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Visual Acceptance for real apps: Device Hub evidence, versioned review matrix and Pi feedback",
   "type": "module",
   "keywords": [
